@@ -1520,6 +1520,13 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl">
+                  <Activity size={20} className="text-indigo-600" />
+                  <div>
+                    <p className="text-sm font-bold">Dicas de Economia IA</p>
+                    <p className="text-[10px] text-slate-500">Radar inteligente para reduzir gastos com combustível.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl">
                   <ShieldAlert size={20} className="text-red-600" />
                   <div>
                     <p className="text-sm font-bold">Alerta de Roubo</p>
