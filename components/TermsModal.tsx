@@ -35,6 +35,9 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onAccept, onClose }) =>
                     <p>
                         <strong className="text-indigo-600">4. USO DO PLANO:</strong> O Plano Free permite o uso limitado. O upgrade para o Plano Premium oferece acesso ilimitado e relatórios, via Google Play Billing no Android.
                     </p>
+                    <p>
+                        <strong className="text-indigo-600">5. CONTEÚDO GERADO PELO USUÁRIO (UGC):</strong> É estritamente proibido postar conteúdo ofensivo, falso ou abusivo. O AutoCare reserva-se o direito de remover qualquer conteúdo e banir usuários que violem estas regras. Outros usuários podem denunciar abusos através do botão de denúncia disponível em cada avistamento.
+                    </p>
                 </div>
 
                 <div className="space-y-3">

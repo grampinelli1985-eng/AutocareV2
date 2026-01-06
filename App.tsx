@@ -11,7 +11,7 @@ import AddVehicleModal from './components/AddVehicleModal';
 import SightingModal from './components/SightingModal';
 import TheftReportModal from './components/TheftReportModal';
 import { Vehicle, MaintenanceTask, ServiceRecord, TheftReport, MaintenanceMilestone, MaintenancePriority, TheftSighting, FuelLog } from './types';
-import { getSmartMaintenanceAdvice } from './services/geminiService';
+import { getSmartMaintenanceAdvice, getFuelEconomyAdvice } from './services/geminiService';
 import { findManualForVehicle } from './maintenanceData';
 import { BRANDS, FUEL_TYPES, TRANSMISSIONS, MODELS_BY_BRAND, COMMON_ENGINES, DEFAULT_MAINTENANCE_PLAN } from './constants';
 import { supabase } from './services/supabase';
@@ -51,10 +51,13 @@ const App: React.FC = () => {
   const [records, setRecords] = useState<ServiceRecord[]>([]);
   const [fuelLogs, setFuelLogs] = useState<FuelLog[]>([]);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [aiFuelAdvice, setAiFuelAdvice] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFuelAiLoading, setIsFuelAiLoading] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('autocare-theme') as Theme) || 'system');
   const [radarCache, setRadarCache] = useState<Record<string, { mileage: number, analysis: any }>>({});
+  const [fuelAdviceCache, setFuelAdviceCache] = useState<Record<string, { mileage: number, advice: any }>>({});
 
   // Notifications state
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -407,6 +410,32 @@ const App: React.FC = () => {
     }
   }, [selectedVehicle?.id, selectedVehicle?.currentMileage, isLoggedIn]);
 
+  useEffect(() => {
+    if (selectedVehicle && isLoggedIn) {
+      if (userPlan !== 'premium') {
+        setAiFuelAdvice(null);
+        return;
+      }
+
+      const cached = fuelAdviceCache[selectedVehicle.id];
+      if (cached && cached.mileage === selectedVehicle.currentMileage) {
+        setAiFuelAdvice(cached.advice);
+        return;
+      }
+
+      setIsFuelAiLoading(true);
+      getFuelEconomyAdvice(selectedVehicle, averageConsumption).then(data => {
+        setAiFuelAdvice(data);
+        setFuelAdviceCache(prev => ({
+          ...prev,
+          [selectedVehicle.id]: { mileage: selectedVehicle.currentMileage, advice: data }
+        }));
+        setIsFuelAiLoading(true); // Keep loading state if we want to show it? Or set to false
+        setIsFuelAiLoading(false);
+      });
+    }
+  }, [selectedVehicle?.id, selectedVehicle?.currentMileage, averageConsumption, isLoggedIn, userPlan]);
+
   const addNotification = (notif: Omit<NotificationItem, 'id' | 'date' | 'isRead'>) => {
     const newNotif: NotificationItem = {
       ...notif,
@@ -462,7 +491,15 @@ const App: React.FC = () => {
 
       if (vError) throw vError;
 
-      // 2. Clear local states
+      // 2. Delete profile
+      const { error: pError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', session.user.id);
+
+      if (pError) throw pError;
+
+      // 3. Clear local states
       setVehicles([]);
       setRecords([]);
       setNotifications([]);
@@ -1665,6 +1702,44 @@ const App: React.FC = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Radar de Consumo IA */}
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="bg-indigo-100 dark:bg-indigo-500/20 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Radar de Consumo IA</span>
+                        {userPlan === 'premium' && <span className="bg-amber-400 text-[8px] font-black text-white px-1.5 py-0.5 rounded-full uppercase">Premium</span>}
+                      </div>
+
+                      {userPlan === 'free' ? (
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-2xl">
+                          <p className="text-[9px] text-slate-600 dark:text-indigo-200 leading-tight mb-2">
+                            Analise seu consumo com IA e receba dicas personalizadas para economizar combustível.
+                          </p>
+                          <button className="w-full bg-indigo-600 text-[9px] font-black text-white py-2 rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 transition-all">
+                            Desbloquear IA Premium
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {isFuelAiLoading && !aiFuelAdvice ? (
+                            <div className="h-16 bg-slate-100 dark:bg-white/5 animate-pulse rounded-2xl" />
+                          ) : aiFuelAdvice?.tips ? (
+                            aiFuelAdvice.tips.map((tip: string, idx: number) => (
+                              <div key={idx} className="flex gap-3 bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5">
+                                <div className="shrink-0 w-1 h-full bg-indigo-400 rounded-full" />
+                                <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight font-medium">{tip}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic">Abasteça mais vezes para receber dicas personalizadas.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <button
                       onClick={() => setShowFuelModal(true)}
                       className="bg-emerald-600 text-white px-4 py-3 rounded-2xl font-bold text-xs active:scale-95 shadow-lg shadow-emerald-200 dark:shadow-none flex items-center gap-2 uppercase tracking-tight"
@@ -1976,7 +2051,7 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">KM Rodado</p>
-                    <input required name="mileage" type="number" defaultValue={taskToComplete.targetKm} placeholder="Ex: 10000" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
+                    <input required name="mileage" type="number" inputMode="numeric" defaultValue={taskToComplete.targetKm} placeholder="Ex: 10000" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
                   </div>
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data</p>
@@ -1985,7 +2060,7 @@ const App: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor Total (R$)</p>
-                  <input required name="cost" type="number" step="0.01" placeholder="Ex: 450.00" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
+                  <input required name="cost" type="number" step="0.01" inputMode="decimal" placeholder="Ex: 450.00" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
                 </div>
                 <div className="space-y-1">
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Detalhes (Opcional)</p>
@@ -2160,17 +2235,17 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">KM Atual</p>
-                    <input required name="mileage" type="number" defaultValue={selectedVehicle?.currentMileage} placeholder="Ex: 10500" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
+                    <input required name="mileage" type="number" inputMode="numeric" defaultValue={selectedVehicle?.currentMileage} placeholder="Ex: 10500" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
                   </div>
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Litros</p>
-                    <input required name="liters" type="number" step="0.01" placeholder="Ex: 45.5" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
+                    <input required name="liters" type="number" step="0.01" inputMode="decimal" placeholder="Ex: 45.5" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor Total (R$)</p>
-                    <input required name="cost" type="number" step="0.01" placeholder="Ex: 250.00" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
+                    <input required name="cost" type="number" step="0.01" inputMode="decimal" placeholder="Ex: 250.00" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
                   </div>
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data</p>

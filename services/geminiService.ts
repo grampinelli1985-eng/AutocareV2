@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { Vehicle, ChatMessage } from "../types";
+import { Vehicle, ChatMessage, FuelLog } from "../types";
 
 const genAI = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
 
@@ -114,5 +114,45 @@ export async function chatWithGemini(messages: ChatMessage[], vehicle: Vehicle |
     console.groupEnd();
 
     return "Ocorreu um erro na conexão com meu cérebro mecânico. Pode tentar novamente? Dica: Verifique se sua chave API está correta no console do navegador.";
+  }
+}
+
+export async function getFuelEconomyAdvice(vehicle: Vehicle, averageKmL: string | null) {
+  try {
+    const prompt = `
+      Aja como um engenheiro automotivo especialista em consumo de combustível.
+      Analise o veículo: ${vehicle.brand} ${vehicle.model} ${vehicle.year} ${vehicle.engine}.
+      Consumo real médio registrado pelo usuário: ${averageKmL ? averageKmL + ' km/L' : 'Não registrado ainda'}.
+
+      Forneça 3 dicas EXTREMAMENTE CURTAS E DIRETAS (máximo 80 caracteres cada) para melhorar a eficiência deste modelo específico.
+      Se o consumo estiver alto para o padrão do carro, mencione possíveis causas (velas, sensores, pneus).
+      Se não houver consumo registrado, foque em como este modelo costuma se comportar e dicas genéricas de condução econômica.
+
+      A resposta DEVE ser um objeto JSON válido.
+      Exemplo:
+      {
+        "status": "bom",
+        "tips": [
+          "Dica 1 curta",
+          "Dica 2 curta",
+          "Dica 3 curta"
+        ]
+      }
+    `;
+
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
+
+    const rawText = response.text || "{}";
+    const jsonStart = rawText.indexOf('{');
+    const jsonEnd = rawText.lastIndexOf('}');
+    if (jsonStart === -1 || jsonEnd === -1) return null;
+
+    return JSON.parse(rawText.substring(jsonStart, jsonEnd + 1));
+  } catch (error) {
+    console.error("Error fetching fuel advice:", error);
+    return null;
   }
 }
