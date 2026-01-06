@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>AutoCare IA - Gestão Automotiva</title>
+  <meta name="description"
+    content="Organize a manutenção do seu carro, receba alertas e cuide do seu veículo com inteligência.">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="manifest" href="/manifest.json">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // ERROR DEBUGGER FOR MOBILE
+    window.onerror = function (msg, url, line, col, error) {
+      alert("Erro JS: " + msg + "\nLine: " + line);
+    };
+    window.addEventListener('unhandledrejection', function (event) {
+      alert("Erro Promise: " + event.reason);
+    });
+
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Suaviza transição de cores ao trocar tema */
+    * {
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    /* Animações de Transição de Abas */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes slideInBottom {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-tab-fade {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+
+    .animate-tab-slide-right {
+      animation: slideInRight 0.4s ease-out forwards;
+    }
+
+    .animate-tab-slide-bottom {
+      animation: slideInBottom 0.4s ease-out forwards;
+    }
+
+    /* Oculta elementos desnecessários na impressão nativa */
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+
+      #printable-report {
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+    }
+
+    /* Classe para esconder itens no PDF gerado via Canvas */
+    .pdf-hidden {
+      display: none !important;
+    }
+
+    /* Estilos específicos para garantir que o report seja capturado corretamente */
+    #printable-report {
+      background-color: white !important;
+      color: #0f172a !important;
+      /* slate-900 */
+    }
+
+    /* Força fundo branco para todos os containers dentro do PDF */
+    .pdf-content-area * {
+      color-scheme: light !important;
+    }
+  </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "html2canvas": "https://esm.sh/html2canvas@1.4.1"
+  }
+}
+</script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>

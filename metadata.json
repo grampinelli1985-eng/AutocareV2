@@ -1,0 +1,7 @@
+{
+  "name": "AutoCare - Seu Manual Inteligente",
+  "description": "Um aplicativo completo para gestão de manutenção automotiva pós-garantia, com alertas inteligentes, score de saúde do veículo e rede de proteção comunitária contra roubos.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
