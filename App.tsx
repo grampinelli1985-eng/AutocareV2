@@ -99,6 +99,7 @@ const App: React.FC = () => {
   const [showHealthExplanation, setShowHealthExplanation] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [showFuelAdviceModal, setShowFuelAdviceModal] = useState(false);
 
   // Alertas e Recuperação
   const [reportingTheftVehicleId, setReportingTheftVehicleId] = useState<string | null>(null);
@@ -1718,7 +1719,10 @@ const App: React.FC = () => {
                           <p className="text-[9px] text-slate-600 dark:text-indigo-200 leading-tight mb-2">
                             Analise seu consumo com IA e receba dicas personalizadas para economizar combustível.
                           </p>
-                          <button className="w-full bg-indigo-600 text-[9px] font-black text-white py-2 rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 transition-all">
+                          <button
+                            onClick={() => setShowSubscriptionModal(true)}
+                            className="w-full bg-indigo-600 text-[9px] font-black text-white py-2 rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 transition-all"
+                          >
                             Desbloquear IA Premium
                           </button>
                         </div>
@@ -1727,12 +1731,12 @@ const App: React.FC = () => {
                           {isFuelAiLoading && !aiFuelAdvice ? (
                             <div className="h-16 bg-slate-100 dark:bg-white/5 animate-pulse rounded-2xl" />
                           ) : aiFuelAdvice?.tips ? (
-                            aiFuelAdvice.tips.map((tip: string, idx: number) => (
-                              <div key={idx} className="flex gap-3 bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5">
-                                <div className="shrink-0 w-1 h-full bg-indigo-400 rounded-full" />
-                                <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight font-medium">{tip}</p>
-                              </div>
-                            ))
+                            <button
+                              onClick={() => setShowFuelAdviceModal(true)}
+                              className="w-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-500/30"
+                            >
+                              <Activity size={14} /> Confira Dicas
+                            </button>
                           ) : (
                             <p className="text-[10px] text-slate-400 italic">Abasteça mais vezes para receber dicas personalizadas.</p>
                           )}
@@ -2264,6 +2268,43 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* MODAL DICAS DE CONSUMO IA */}
+        {showFuelAdviceModal && aiFuelAdvice?.tips && (
+          <div className="fixed inset-0 z-[2300] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="bg-indigo-100 dark:bg-indigo-500/20 p-2 rounded-2xl text-indigo-600 dark:text-indigo-400">
+                    <Activity size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Dicas de Consumo</h3>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Personalizadas para seu veículo</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowFuelAdviceModal(false)} className="p-2 text-slate-400 bg-slate-100 dark:bg-white/5 rounded-full"><X size={20} /></button>
+              </div>
+
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {aiFuelAdvice.tips.map((tip: string, idx: number) => (
+                  <div key={idx} className="flex gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl border border-slate-100 dark:border-white/5">
+                    <div className="shrink-0 w-1.5 bg-indigo-400 rounded-full" />
+                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{tip}</p>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowFuelAdviceModal(false)}
+                className="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-5 rounded-[24px] font-black uppercase text-xs tracking-widest shadow-xl active:scale-95"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     </Layout>
   );
