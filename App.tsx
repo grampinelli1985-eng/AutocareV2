@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { PlusCircle, Info, ChevronRight, Check, Trash2, Car as CarIcon, X, ShieldAlert, AlertTriangle, MapPinned, BellRing, Trophy, PartyPopper, PenTool, Eye, MapPin, CheckCircle2, Navigation, ExternalLink, ShieldCheck, Scale, FileText, Crown, Download, Lock, Printer, Fingerprint, CreditCard, Loader2, User as UserIcon, Siren, ClipboardList, CheckSquare, Square, Bell, Sparkles, Flag, Activity } from 'lucide-react';
+import { PlusCircle, Info, ChevronRight, Check, Trash2, Car as CarIcon, X, ShieldAlert, AlertTriangle, MapPinned, BellRing, Trophy, PartyPopper, PenTool, Eye, MapPin, CheckCircle2, Navigation, ExternalLink, ShieldCheck, Scale, FileText, Crown, Download, Lock, Printer, Fingerprint, CreditCard, Loader2, User as UserIcon, Siren, ClipboardList, CheckSquare, Square, Bell, Sparkles, Flag, Activity, Zap } from 'lucide-react';
 import Layout from './components/Layout';
 import VehicleCard from './components/VehicleCard';
 import MaintenanceTimeline from './components/MaintenanceTimeline';
@@ -1680,76 +1680,77 @@ const App: React.FC = () => {
                   />
 
                   {/* CARD DE CONSUMO */}
-                  <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600">
-                        <Activity size={24} />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Consumo Real</p>
-                        <h4 className="text-lg font-black text-slate-800 dark:text-white leading-none">
-                          {averageConsumption ? `${averageConsumption} km/L` : '--- km/L'}
-                        </h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">Média Histórica</p>
-                          {averageConsumption && (
-                            <button
-                              onClick={handleResetFuel}
-                              className="text-[8px] text-red-400 font-black uppercase hover:text-red-600 transition-colors"
-                            >
-                              (Resetar)
-                            </button>
-                          )}
+                  <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm">
+                    <div className="flex items-start justify-between mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600">
+                          <Activity size={24} />
                         </div>
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Consumo Real</p>
+                          <h4 className="text-lg font-black text-slate-800 dark:text-white leading-none">
+                            {averageConsumption ? `${averageConsumption} km/L` : '--- km/L'}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">Média Histórica</p>
+                            {averageConsumption && (
+                              <button
+                                onClick={handleResetFuel}
+                                className="text-[8px] text-red-400 font-black uppercase hover:text-red-600 transition-colors"
+                              >
+                                (Resetar)
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Radar de Consumo IA Header */}
+                      <div className="text-right">
+                        <div className="flex items-center justify-end gap-2 mb-1">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Radar de Consumo IA</span>
+                          <div className="bg-indigo-100 dark:bg-indigo-500/20 p-1 rounded-lg text-indigo-600 dark:text-indigo-400">
+                            <Zap size={12} />
+                          </div>
+                        </div>
+                        {userPlan === 'premium' && <span className="bg-amber-400 text-[7px] font-black text-white px-2 py-0.5 rounded-full uppercase tracking-widest">Premium</span>}
                       </div>
                     </div>
 
-                    {/* Radar de Consumo IA */}
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/10">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="bg-indigo-100 dark:bg-indigo-500/20 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Radar de Consumo IA</span>
-                        {userPlan === 'premium' && <span className="bg-amber-400 text-[8px] font-black text-white px-1.5 py-0.5 rounded-full uppercase">Premium</span>}
-                      </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setShowFuelModal(true)}
+                        className="bg-emerald-600 text-white px-4 py-3.5 rounded-2xl font-black text-[10px] active:scale-95 shadow-lg shadow-emerald-200 dark:shadow-none flex items-center justify-center gap-2 uppercase tracking-widest"
+                      >
+                        <PlusCircle size={14} /> Abastecer
+                      </button>
 
                       {userPlan === 'free' ? (
-                        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-2xl">
-                          <p className="text-[9px] text-slate-600 dark:text-indigo-200 leading-tight mb-2">
-                            Analise seu consumo com IA e receba dicas personalizadas para economizar combustível.
-                          </p>
-                          <button
-                            onClick={() => setShowSubscriptionModal(true)}
-                            className="w-full bg-indigo-600 text-[9px] font-black text-white py-2 rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 transition-all"
-                          >
-                            Desbloquear IA Premium
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => setShowSubscriptionModal(true)}
+                          className="w-full bg-indigo-600 text-[9px] font-black text-white py-3.5 rounded-2xl uppercase tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 transition-all text-center"
+                        >
+                          Unlock Premium
+                        </button>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="w-full">
                           {isFuelAiLoading && !aiFuelAdvice ? (
-                            <div className="h-16 bg-slate-100 dark:bg-white/5 animate-pulse rounded-2xl" />
+                            <div className="h-full bg-slate-100 dark:bg-white/5 animate-pulse rounded-2xl" />
                           ) : aiFuelAdvice?.tips ? (
                             <button
                               onClick={() => setShowFuelAdviceModal(true)}
-                              className="w-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-500/30"
+                              className="w-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-100 dark:border-indigo-500/20"
                             >
-                              <Activity size={14} /> Confira Dicas
+                              <Activity size={14} /> Dicas IA
                             </button>
                           ) : (
-                            <p className="text-[10px] text-slate-400 italic">Abasteça mais vezes para receber dicas personalizadas.</p>
+                            <div className="h-full bg-slate-50 dark:bg-white/5 flex items-center justify-center rounded-2xl px-2">
+                              <p className="text-[8px] text-slate-400 italic text-center leading-tight">Mais dados p/ IA</p>
+                            </div>
                           )}
                         </div>
                       )}
                     </div>
-
-                    <button
-                      onClick={() => setShowFuelModal(true)}
-                      className="bg-emerald-600 text-white px-4 py-3 rounded-2xl font-bold text-xs active:scale-95 shadow-lg shadow-emerald-200 dark:shadow-none flex items-center gap-2 uppercase tracking-tight"
-                    >
-                      <PlusCircle size={16} /> Abastecer
-                    </button>
                   </div>
                 </div>
                 <div className="bg-indigo-900 rounded-[32px] p-6 text-white shadow-xl relative overflow-hidden">
