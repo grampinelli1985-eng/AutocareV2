@@ -780,20 +780,24 @@ const App: React.FC = () => {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
+      const margin = 10; // 10mm margin
+      const printableWidth = pdfWidth - (margin * 2);
+      const printableHeight = pdfHeight - (margin * 2);
+
       const imgProps = pdf.getImageProperties(imgData);
-      const contentHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      const imgHeight = (imgProps.height * printableWidth) / imgProps.width;
 
-      let heightLeft = contentHeight;
-      let position = 0;
+      let heightLeft = imgHeight;
+      let position = margin;
 
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, contentHeight);
-      heightLeft -= pdfHeight;
+      pdf.addImage(imgData, 'PNG', margin, position, printableWidth, imgHeight);
+      heightLeft -= printableHeight;
 
       while (heightLeft > 0) {
-        position = heightLeft - contentHeight;
+        position -= printableHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, contentHeight);
-        heightLeft -= pdfHeight;
+        pdf.addImage(imgData, 'PNG', margin, position, printableWidth, imgHeight);
+        heightLeft -= printableHeight;
       }
 
       pdf.save(`AutoCare_Relatorio_${selectedVehicle?.plate || 'Manutencao'}.pdf`);
