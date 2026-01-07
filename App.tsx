@@ -739,37 +739,23 @@ const App: React.FC = () => {
   };
 
   const printReport = async () => {
-    const element = document.getElementById('printable-report');
-    if (!element || isGeneratingPdf) return;
+    const reportContainer = document.getElementById('printable-report');
+    if (!reportContainer || isGeneratingPdf) return;
 
     setIsGeneratingPdf(true);
     try {
       const { default: html2canvas } = await import('html2canvas');
       const { jsPDF } = await import('jspdf');
 
-      const originalStyle = element.getAttribute('style') || '';
-      element.style.height = 'auto';
-      element.style.overflow = 'visible';
-      element.style.width = '800px';
-      element.style.position = 'relative';
+      const originalStyle = reportContainer.getAttribute('style') || '';
+      reportContainer.style.height = 'auto';
+      reportContainer.style.overflow = 'visible';
+      reportContainer.style.width = '800px';
+      reportContainer.style.position = 'relative';
 
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        onclone: (clonedDoc) => {
-          const el = clonedDoc.getElementById('printable-report');
-          if (el) {
-            el.style.height = 'auto';
-            el.style.overflow = 'visible';
-          }
-        }
-      });
+      // Select all chunks to print
+      const chunks = Array.from(reportContainer.querySelectorAll('.print-chunk')) as HTMLElement[];
 
-      element.setAttribute('style', originalStyle);
-
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'p',
         unit: 'mm',
@@ -784,22 +770,34 @@ const App: React.FC = () => {
       const printableWidth = pdfWidth - (margin * 2);
       const printableHeight = pdfHeight - (margin * 2);
 
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgHeight = (imgProps.height * printableWidth) / imgProps.width;
+      let currentY = margin;
+      let isFirstPage = true;
 
-      let heightLeft = imgHeight;
-      let position = margin;
+      for (const chunk of chunks) {
+        // Prepare chunk for capture (handle potential transparency/styles)
+        const canvas = await html2canvas(chunk, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false
+        });
 
-      pdf.addImage(imgData, 'PNG', margin, position, printableWidth, imgHeight);
-      heightLeft -= printableHeight;
+        const imgData = canvas.toDataURL('image/png');
+        const imgProps = pdf.getImageProperties(imgData);
+        const imgHeight = (imgProps.height * printableWidth) / imgProps.width;
 
-      while (heightLeft > 0) {
-        position -= printableHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', margin, position, printableWidth, imgHeight);
-        heightLeft -= printableHeight;
+        // Check if we need a new page
+        if (!isFirstPage && (currentY + imgHeight > pdfHeight - margin)) {
+          pdf.addPage();
+          currentY = margin;
+        }
+
+        pdf.addImage(imgData, 'PNG', margin, currentY, printableWidth, imgHeight);
+        currentY += imgHeight;
+        isFirstPage = false;
       }
 
+      reportContainer.setAttribute('style', originalStyle);
       pdf.save(`AutoCare_Relatorio_${selectedVehicle?.plate || 'Manutencao'}.pdf`);
     } catch (error) {
       console.error('Falha ao gerar PDF:', error);

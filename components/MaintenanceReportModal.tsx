@@ -35,9 +35,9 @@ export const MaintenanceReportModal: React.FC<MaintenanceReportModalProps> = ({
                     <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600"><X size={24} /></button>
                 </div>
 
-                <div id="printable-report" className="flex-1 overflow-y-auto p-12 space-y-12 bg-white text-slate-900 pdf-content-area custom-scrollbar">
-                    <div className="h-4 bg-indigo-600 rounded-t-lg -mx-12 -mt-12 mb-8"></div>
-                    <div className="flex items-center justify-between border-b-8 border-indigo-600 pb-8">
+                <div id="printable-report" className="flex-1 overflow-y-auto p-12 bg-white text-slate-900 pdf-content-area custom-scrollbar">
+                    <div className="print-chunk h-4 bg-indigo-600 rounded-t-lg -mx-12 -mt-12 mb-8"></div>
+                    <div className="print-chunk flex items-center justify-between border-b-8 border-indigo-600 pb-8 mb-8">
                         <div className="flex items-center gap-6">
                             <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-xl">
                                 <CarIcon size={56} />
@@ -53,7 +53,7 @@ export const MaintenanceReportModal: React.FC<MaintenanceReportModalProps> = ({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-12 pt-4">
+                    <div className="print-chunk grid grid-cols-2 gap-12 pt-4 mb-8">
                         <div className="space-y-4">
                             <h4 className="text-[10px] font-black uppercase text-indigo-600 border-b-2 border-indigo-100 pb-1 tracking-widest">Dados do Proprietário</h4>
                             <div className="flex items-center gap-4">
@@ -73,7 +73,7 @@ export const MaintenanceReportModal: React.FC<MaintenanceReportModalProps> = ({
                         </div>
                     </div>
 
-                    <div className="bg-slate-50 p-8 rounded-[32px] flex justify-around items-center border-2 border-slate-100 shadow-sm">
+                    <div className="print-chunk bg-slate-50 p-8 rounded-[32px] flex justify-around items-center border-2 border-slate-100 shadow-sm mb-12">
                         <div className="text-center">
                             <p className="text-3xl font-black text-indigo-600">{vehicle.currentMileage.toLocaleString()}</p>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">KM Atual Registrado</p>
@@ -85,8 +85,8 @@ export const MaintenanceReportModal: React.FC<MaintenanceReportModalProps> = ({
                         </div>
                     </div>
 
-                    <div className="space-y-8">
-                        <div className="flex items-center gap-3 bg-slate-900 text-white px-6 py-3 rounded-2xl">
+                    <div className="">
+                        <div className="print-chunk flex items-center gap-3 bg-slate-900 text-white px-6 py-3 rounded-2xl mb-8">
                             <ClipboardList size={20} />
                             <h4 className="text-[11px] font-black uppercase tracking-widest">Descrição Completa dos Serviços e Peças</h4>
                         </div>
@@ -94,7 +94,7 @@ export const MaintenanceReportModal: React.FC<MaintenanceReportModalProps> = ({
                         {records.length > 0 ? (
                             <div className="space-y-10">
                                 {records.map(record => (
-                                    <div key={record.id} className="relative border-l-8 border-indigo-600 pl-8 space-y-4">
+                                    <div key={record.id} className="print-chunk relative border-l-8 border-indigo-600 pl-8 space-y-4">
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <p className="text-lg font-black text-slate-800 uppercase tracking-tight">{record.taskTitle}</p>
@@ -139,15 +139,15 @@ export const MaintenanceReportModal: React.FC<MaintenanceReportModalProps> = ({
                                 ))}
                             </div>
                         ) : (
-                            <div className="py-24 text-center text-slate-300 italic text-base font-medium">Não há registros de serviços cadastrados para este veículo.</div>
+                            <div className="print-chunk py-24 text-center text-slate-300 italic text-base font-medium">Não há registros de serviços cadastrados para este veículo.</div>
                         )}
                     </div>
 
-                    <div className="pt-12 mt-12 border-t-4 border-slate-100 space-y-6">
+                    <div className="print-chunk pt-12 mt-12 border-t-4 border-slate-100 space-y-6">
                         <div className="flex justify-between items-end">
                             <div className="space-y-2">
                                 <p className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em]">Certificação AutoCare IA</p>
-                                <p className="text-[10px] text-slate-400 leading-relaxed max-w-[400px] font-medium italic">Documento autogerado via plataforma AutoCare. Este registro é mantido em nuvem para fins de histórico de manutenção preventiva.</p>
+                                <p className="text-xs text-slate-400 leading-relaxed max-w-[400px] font-medium italic">Documento autogerado via plataforma AutoCare. Este registro é mantido em nuvem para fins de histórico de manutenção preventiva.</p>
                             </div>
                             <div className="text-right">
                                 <p className="text-[11px] font-black uppercase text-slate-900 tracking-widest">ID de Autenticação</p>
