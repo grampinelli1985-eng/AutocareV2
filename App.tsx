@@ -89,6 +89,7 @@ const App: React.FC = () => {
   // Máscara de Placa
   const [plateMasked, setPlateMasked] = useState('');
   const [aiQuestionsRemaining, setAiQuestionsRemaining] = useState(5);
+  const [scannedFile, setScannedFile] = useState<File | null>(null);
 
   // Sighting state
   const [sightingVehicleId, setSightingVehicleId] = useState<string | null>(null);
@@ -1173,6 +1174,8 @@ const App: React.FC = () => {
       return;
     }
 
+    setScannedFile(file);
+
     try {
       setIsScanning(true);
       const base64 = await fileToBase64(file);
@@ -1209,6 +1212,24 @@ const App: React.FC = () => {
     if (!selectedVehicleId || !taskToComplete || !session?.user) return;
 
     const mileage = parseInt(fd.get('mileage') as string);
+
+    let receiptUrl = '';
+    if (scannedFile) {
+      const fileName = `${session.user.id}/${Date.now()}_${scannedFile.name.replace(/\s/g, '_')}`;
+      const { error: uploadError } = await supabase.storage
+        .from('receipts')
+        .upload(fileName, scannedFile);
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('receipts')
+          .getPublicUrl(fileName);
+        receiptUrl = publicUrl;
+      } else {
+        console.error("Erro ao subir arquivo:", uploadError);
+      }
+    }
+
     const newRecordData: any = {
       vehicle_id: selectedVehicleId,
       user_id: session.user.id,
@@ -1217,6 +1238,7 @@ const App: React.FC = () => {
       mileage,
       cost: parseFloat(fd.get('cost') as string) || 0,
       notes: fd.get('notes') as string,
+      receipt_url: receiptUrl // Agora incluímos a URL da nota
     };
 
     const { data: record, error: rError } = await supabase
@@ -1234,9 +1256,12 @@ const App: React.FC = () => {
       ...record,
       vehicleId: record.vehicle_id,
       userId: record.user_id,
-      taskTitle: record.task_title
+      taskTitle: record.task_title,
+      receiptUrl: record.receipt_url
     };
     setRecords(prev => [...prev, mappedRecord]);
+    setScannedFile(null);
+    setTaskToComplete(null);
 
     if (mileage > (selectedVehicle?.currentMileage || 0)) {
       const { error: vError } = await supabase
@@ -1486,7 +1511,6 @@ const App: React.FC = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Meu Veículo</h2>
-                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${userPlan === 'premium' ? 'bg-amber-100 text-amber-600' : 'bg-indigo-50 text-indigo-500'}`}>Plano {userPlan}</span>
               </div>
               <button onClick={() => handleStartVehicleAction(true)} className="text-indigo-600 font-bold text-sm bg-indigo-50 px-4 py-2 rounded-xl active:scale-90">
                 <PlusCircle size={18} />
@@ -1520,8 +1544,8 @@ const App: React.FC = () => {
                     onDelete={(id) => setVehicleToDeleteId(id)}
                     onShowHealthInfo={() => setShowHealthExplanation(true)}
                     isLoading={isLoading}
+                    userPlan={userPlan}
                   />
-
                   <PerformanceCard
                     score={performanceScore}
                     averageConsumption={averageConsumption}
@@ -1678,11 +1702,27 @@ const App: React.FC = () => {
         {activeTab === 'profile' && (
           <div className="space-y-6 animate-tab-slide-bottom">
             <div className="text-center py-8">
-              <div className="w-20 h-20 bg-indigo-100 dark:bg-slate-800 rounded-[32px] mx-auto mb-4 flex items-center justify-center font-black text-indigo-600 text-2xl shadow-xl">U</div>
+              <div className="relative mx-auto mb-4 w-20 h-20">
+                <div className={`w-20 h-20 rounded-[32px] flex items-center justify-center font-black text-2xl shadow-xl transition-all duration-500 ${userPlan === 'premium'
+                  ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white ring-4 ring-amber-100 shadow-amber-200 animate-in zoom-in-75'
+                  : 'bg-indigo-100 dark:bg-slate-800 text-indigo-600'
+                  }`}>
+                  U
+                </div>
+                {userPlan === 'premium' && (
+                  <div className="absolute -top-3 -right-3 bg-amber-500 text-white p-1.5 rounded-2xl shadow-lg border-2 border-white animate-bounce-slow">
+                    <Crown size={16} fill="currentColor" />
+                  </div>
+                )}
+              </div>
               <h3 className="font-bold text-lg dark:text-white">{session?.user?.email || 'Motorista AutoCare'}</h3>
-              <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase ${userPlan === 'free' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full uppercase text-[10px] font-black tracking-wider ${userPlan === 'premium'
+                ? 'bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800 border border-amber-300 shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'
+                }`}>
+                {userPlan === 'premium' ? <Crown size={12} strokeWidth={3} /> : <ShieldCheck size={12} strokeWidth={3} />}
                 Plano {userPlan}
-              </span>
+              </div>
             </div>
 
             {userPlan === 'free' && (
@@ -1691,7 +1731,8 @@ const App: React.FC = () => {
                   <h4 className="text-lg font-black uppercase tracking-tight">Upgrade Premium</h4>
                   <Crown size={24} />
                 </div>
-                <p className="text-xs font-bold leading-relaxed opacity-90">Libere IA especialista, alertas comunitários de roubo, relatórios em PDF e veículos ilimitados por apenas R$ 15,99/mês.</p>
+                <p className="text-xs font-bold leading-relaxed opacity-90">Libere IA especialista, alertas nacional comunitários de roubo, relatórios em PDF, veículos ilimitados e mais por apenas R$ 15,99/mês.</p>
+                <p className="text-xs font-bold leading-relaxed opacity-90">Cancele a qualquer momento pela Google Play Store.</p>
                 <button onClick={() => setShowSubscriptionModal(true)} className="w-full bg-white text-amber-600 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95">Quero ser Premium</button>
               </div>
             )}
@@ -1792,18 +1833,21 @@ const App: React.FC = () => {
           onSave={handleRegisterFromChecklist}
           isSaving={false}
           onFileSelect={handleInvoiceScan}
-          selectedFile={null}
+          selectedFile={scannedFile}
           isCapturing={isScanning}
           userPlan={userPlan}
+          onUnlockPremium={() => setShowSubscriptionModal(true)}
         />
 
         <ServiceRegistrationModal
           task={taskToComplete}
-          onClose={() => setTaskToComplete(null)}
+          onClose={() => { setTaskToComplete(null); setScannedFile(null); }}
           onSubmit={saveServiceRecord}
           isScanning={isScanning}
           onInvoiceScan={handleInvoiceScan}
           userPlan={userPlan}
+          selectedFile={scannedFile}
+          onUnlockPremium={() => setShowSubscriptionModal(true)}
         />
 
         <VehicleDeletionModal

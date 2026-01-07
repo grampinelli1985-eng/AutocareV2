@@ -121,6 +121,20 @@ export const MaintenanceReportModal: React.FC<MaintenanceReportModalProps> = ({
                                                 {record.notes || "Nenhum detalhe adicional informado para este registro."}
                                             </p>
                                         </div>
+
+                                        {record.receiptUrl && (
+                                            <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-2">
+                                                <p className="text-[8px] font-black uppercase text-slate-400">Anexo: Miniatura do Comprovante</p>
+                                                <div className="w-32 h-32 rounded-xl overflow-hidden border-2 border-slate-100 shadow-sm bg-slate-50">
+                                                    <img
+                                                        src={record.receiptUrl}
+                                                        alt="Recibo"
+                                                        className="w-full h-full object-cover"
+                                                        crossOrigin="anonymous"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

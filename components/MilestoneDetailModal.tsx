@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, CheckSquare, Square, Camera, Loader2, FileText, CheckCircle2 } from 'lucide-react';
+import { X, CheckSquare, Square, Camera, Loader2, FileText, CheckCircle2, Lock, Crown } from 'lucide-react';
 import { MaintenanceMilestone } from '../types';
 
 interface MilestoneDetailModalProps {
@@ -14,6 +14,7 @@ interface MilestoneDetailModalProps {
     selectedFile: File | null;
     isCapturing: boolean;
     userPlan?: 'free' | 'premium';
+    onUnlockPremium: () => void;
 }
 
 export const MilestoneDetailModal: React.FC<MilestoneDetailModalProps> = ({
@@ -27,6 +28,7 @@ export const MilestoneDetailModal: React.FC<MilestoneDetailModalProps> = ({
     selectedFile,
     isCapturing,
     userPlan = 'free',
+    onUnlockPremium,
 }) => {
     if (!milestone) return null;
 
@@ -69,6 +71,12 @@ export const MilestoneDetailModal: React.FC<MilestoneDetailModalProps> = ({
                             accept="image/*"
                             capture="environment"
                             onChange={onFileSelect}
+                            onClick={(e) => {
+                                if (userPlan === 'free') {
+                                    e.preventDefault();
+                                    onUnlockPremium();
+                                }
+                            }}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             disabled={isSaving || isCapturing}
                         />
@@ -79,7 +87,7 @@ export const MilestoneDetailModal: React.FC<MilestoneDetailModalProps> = ({
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-black uppercase text-slate-800 dark:text-white truncate flex items-center gap-2">
                                     {selectedFile ? selectedFile.name : 'Escanear Nota Fiscal'}
-                                    {userPlan === 'free' && <Lock size={12} className="text-amber-500" />}
+                                    {userPlan === 'free' && <Crown size={12} className="text-amber-500 fill-amber-500" />}
                                 </p>
                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
                                     {userPlan === 'free' ? 'Disponível no Premium' : selectedFile ? 'Comprovante pronto' : 'IA vai analisar os itens'}
@@ -92,7 +100,7 @@ export const MilestoneDetailModal: React.FC<MilestoneDetailModalProps> = ({
                     <button
                         onClick={onSave}
                         disabled={checkedTaskIds.length === 0 || isSaving || isCapturing}
-                        className="w-full bg-indigo-600 py-4 rounded-2xl font-bold text-white shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 disabled:opacity-50 disabled:bg-slate-400 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                        className="w-full bg-indigo-600 py-4 rounded-2xl font-bold text-white shadow-lg active:scale-95 disabled:opacity-50 disabled:bg-slate-400 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2"
                     >
                         {isSaving ? (
                             <>
@@ -108,3 +116,6 @@ export const MilestoneDetailModal: React.FC<MilestoneDetailModalProps> = ({
         </div>
     );
 };
+
+export default MilestoneDetailModal;
+

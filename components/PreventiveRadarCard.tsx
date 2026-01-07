@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Crown, ShieldCheck } from 'lucide-react';
 
 interface Advice {
     title: string;
@@ -20,7 +21,14 @@ export const PreventiveRadarCard: React.FC<PreventiveRadarCardProps> = ({
 }) => {
     return (
         <div className="bg-indigo-900 rounded-[32px] p-6 text-white shadow-xl relative overflow-hidden">
-            <h3 className="text-lg font-bold">Radar Preventivo IA</h3>
+            <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-bold">Radar Preventivo IA</h3>
+                {userPlan === 'premium' ? (
+                    <Crown size={20} className="text-amber-400" />
+                ) : (
+                    <ShieldCheck size={20} className="text-white/40" />
+                )}
+            </div>
             <div className="space-y-3 mt-4">
                 {isLoading && !analysis ? (
                     <div className="h-20 bg-white/10 animate-pulse rounded-2xl" />

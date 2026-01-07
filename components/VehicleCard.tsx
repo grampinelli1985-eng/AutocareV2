@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Fuel, Activity, Trash2, Loader2 } from 'lucide-react';
+import { Fuel, Activity, Trash2, Loader2, Crown, ShieldCheck } from 'lucide-react';
 import { Vehicle } from '../types';
 
 interface VehicleCardProps {
@@ -9,9 +9,10 @@ interface VehicleCardProps {
   onDelete?: (id: string) => void;
   onShowHealthInfo?: () => void;
   isLoading?: boolean;
+  userPlan?: 'free' | 'premium';
 }
 
-const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, score, onDelete, onShowHealthInfo, isLoading }) => {
+const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, score, onDelete, onShowHealthInfo, isLoading, userPlan = 'free' }) => {
   const getScoreColor = (s: number) => {
     if (s > 80) return 'text-green-500 bg-green-50 dark:bg-green-500/10 border-green-100 dark:border-green-500/20';
     if (s > 50) return 'text-yellow-500 bg-yellow-50 dark:bg-yellow-500/10 border-yellow-100 dark:border-yellow-500/20';
@@ -37,6 +38,13 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, score, onDelete, onS
 
       <div className="flex justify-between items-start mb-5 pr-10">
         <div>
+          <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg uppercase text-[8px] font-black tracking-tighter mb-1.5 border shadow-sm ${userPlan === 'premium'
+              ? 'bg-amber-100 text-amber-700 border-amber-200'
+              : 'bg-slate-50 text-slate-400 border-slate-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-800'
+            }`}>
+            {userPlan === 'premium' ? <Crown size={8} /> : <ShieldCheck size={8} />}
+            Plano {userPlan}
+          </div>
           <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 leading-tight">{vehicle.brand} {vehicle.model}</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide mt-1">{vehicle.year} • {vehicle.engine} • {vehicle.transmission}</p>
         </div>

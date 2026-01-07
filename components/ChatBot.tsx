@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, X, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { Send, X, Bot, User, Loader2, Sparkles, Crown } from 'lucide-react';
 import { ChatMessage, Vehicle } from '../types';
 import { chatWithGemini } from '../services/geminiService';
 
@@ -60,7 +60,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, q
 
   return (
     <>
-      {/* Janela de Chat */}
       <div className={`fixed inset-0 sm:inset-auto sm:right-6 sm:bottom-6 z-[110] w-full sm:w-[400px] h-full sm:h-[600px] bg-white dark:bg-slate-900 shadow-2xl flex flex-col transition-all duration-500 transform ${isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
         } sm:rounded-[32px] border border-slate-200 dark:border-slate-800 overflow-hidden`}>
 
@@ -71,8 +70,11 @@ const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, q
               <Bot size={24} />
             </div>
             <div>
-              <h3 className="font-black text-sm uppercase tracking-tight">Manual Inteligente</h3>
-              <p className="text-[10px] text-indigo-100 font-medium">Especialista AutoCare IA • 1.5</p>
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-black text-sm uppercase tracking-tight">Manual Inteligente</h3>
+                {userPlan === 'premium' && <Crown size={12} className="text-amber-400 fill-amber-400" />}
+              </div>
+              <p className="text-[10px] text-indigo-100 font-medium leading-none">Especialista AutoCare IA • Pro 1.5</p>
             </div>
           </div>
           <button
@@ -83,7 +85,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, q
           </button>
         </div>
 
-        {/* Mensagens */}
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-950/50">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4">
@@ -155,24 +157,24 @@ const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, q
             </button>
           </div>
           <div className="flex flex-col gap-1">
-            <p className="text-[9px] text-center text-slate-400 mt-3 font-bold uppercase tracking-widest">
-              {userPlan === 'free' ? (
-                <>
-                  {questionsRemaining} perguntas restantes hoje •
-                  {questionsRemaining <= 0 && (
-                    <button
-                      onClick={(e) => { e.preventDefault(); onUpgrade(); }}
-                      className="ml-2 text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
-                    >
-                      Seja Premium <Sparkles size={8} />
-                    </button>
-                  )}
-                  {' '}
-                </>
-              ) : ''}Alimentado por Gemini 1.5 Pro
-            </p>
-            <p className="text-[8px] text-center text-slate-400 font-medium leading-tight px-4 pb-1">
-              As respostas são geradas por inteligência artificial e podem conter erros. Na dúvida consulte sempre o manual oficial do fabricante.
+            <div className="flex items-center justify-center gap-1.5 mt-3">
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none">
+                {userPlan === 'free' ? `${questionsRemaining} perguntas restantes hoje` : 'Acesso Premium Ilimitado'}
+              </p>
+              {userPlan === 'premium' && <Crown size={8} className="text-amber-500 fill-amber-500" />}
+            </div>
+
+            {userPlan === 'free' && questionsRemaining <= 0 && (
+              <button
+                onClick={(e) => { e.preventDefault(); onUpgrade(); }}
+                className="text-[10px] text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-tighter hover:underline flex items-center justify-center gap-1"
+              >
+                Ficar sem limites com Premium <Sparkles size={10} className="animate-pulse" />
+              </button>
+            )}
+
+            <p className="text-[8px] text-center text-slate-400 font-medium leading-tight px-4 mt-1">
+              Alimentado por Gemini 1.5 Pro. IA pode conter erros.
             </p>
           </div>
         </form>

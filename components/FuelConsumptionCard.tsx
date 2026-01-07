@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Activity, Zap, PlusCircle } from 'lucide-react';
+import { Activity, Zap, PlusCircle, Crown, ShieldCheck } from 'lucide-react';
 
 interface FuelConsumptionCardProps {
     averageConsumption: number | null;
@@ -51,12 +51,20 @@ export const FuelConsumptionCard: React.FC<FuelConsumptionCardProps> = ({
 
                 <div className="text-right">
                     <div className="flex items-center justify-end gap-2 mb-1">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Radar de Consumo IA</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Radar IA</span>
                         <div className="bg-indigo-100 dark:bg-indigo-500/20 p-1 rounded-lg text-indigo-600 dark:text-indigo-400">
                             <Zap size={12} />
                         </div>
                     </div>
-                    {userPlan === 'premium' && <span className="bg-amber-400 text-[7px] font-black text-white px-2 py-0.5 rounded-full uppercase tracking-widest">Premium</span>}
+                    {userPlan === 'premium' ? (
+                        <span className="bg-amber-100 text-[8px] font-black text-amber-700 px-2 py-0.5 rounded-full uppercase tracking-tighter flex items-center gap-1 border border-amber-200">
+                            <Crown size={10} /> Premium
+                        </span>
+                    ) : (
+                        <span className="bg-slate-100 text-[8px] font-black text-slate-400 px-2 py-0.5 rounded-full uppercase tracking-tighter flex items-center gap-1">
+                            <ShieldCheck size={10} /> Free
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -71,9 +79,9 @@ export const FuelConsumptionCard: React.FC<FuelConsumptionCardProps> = ({
                 {userPlan === 'free' ? (
                     <button
                         onClick={onUnlockPremium}
-                        className="w-full bg-indigo-600 text-[9px] font-black text-white py-3.5 rounded-2xl uppercase tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 transition-all text-center hover:bg-indigo-700"
+                        className="w-full bg-indigo-600 text-[9px] font-black text-white py-3.5 rounded-2xl uppercase tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 transition-all text-center hover:bg-indigo-700 flex items-center justify-center gap-2"
                     >
-                        Unlock Premium
+                        <Crown size={12} className="text-amber-400" /> Unlock Premium
                     </button>
                 ) : (
                     <div className="w-full">

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, ClipboardList, ShieldAlert, User, Bell, Sparkles, Lock } from 'lucide-react';
+import { Home, ClipboardList, ShieldAlert, User, Bell, Sparkles, Lock, Crown } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -37,7 +37,14 @@ const Layout: React.FC<LayoutProps> = ({
         className="bg-indigo-600 dark:bg-indigo-700 text-white px-6 py-4 flex justify-between items-center shrink-0 shadow-lg z-20"
         style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
       >
-        <h1 className="text-xl font-bold tracking-tight">AutoCare IA</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold tracking-tight">AutoCare IA</h1>
+          {userPlan === 'premium' && (
+            <div className="bg-amber-400 p-1 rounded-full shadow-lg animate-in zoom-in-50">
+              <Crown size={12} className="text-white" />
+            </div>
+          )}
+        </div>
         <button
           onClick={onNotificationClick}
           className="p-1 hover:bg-indigo-500 rounded-lg transition-colors relative"

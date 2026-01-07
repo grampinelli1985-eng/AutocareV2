@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Crown, PlusCircle, Sparkles, FileText, Activity, ShieldAlert } from 'lucide-react';
+import { Crown, PlusCircle, Sparkles, FileText, Activity, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 interface PremiumSubscriptionModalProps {
     isOpen: boolean;
@@ -31,8 +31,8 @@ export const PremiumSubscriptionModal: React.FC<PremiumSubscriptionModalProps> =
                     {[
                         { icon: PlusCircle, title: 'Veículos Ilimitados', desc: 'Cadastre todos os carros da família.' },
                         { icon: Sparkles, title: 'IA Chat Especialista', desc: 'Dúvidas respondidas por IA sem limites.' },
-                        { icon: FileText, title: 'Relatórios em PDF', desc: 'Gere histórico pronto para impressão.' },
-                        { icon: Activity, title: 'Dicas de Economia IA', desc: 'Radar inteligente para reduzir gastos.' },
+                        { icon: FileText, title: 'Relatórios em PDF', desc: 'Gere histórico detalhado e pronto para impressão.' },
+                        { icon: Activity, title: 'Dicas de Economia IA', desc: 'Dicas inteligentes para reduzir consumo.' },
                         { icon: ShieldAlert, title: 'Alerta de Roubo', desc: 'Rede ampliada de proteção comunitária.' }
                     ].map((feature, i) => (
                         <div key={i} className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl">
@@ -58,8 +58,9 @@ export const PremiumSubscriptionModal: React.FC<PremiumSubscriptionModalProps> =
                     </button>
                     <button
                         onClick={onClose}
-                        className="w-full py-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest"
+                        className="w-full py-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
                     >
+                        <ShieldCheck size={14} />
                         Continuar com Plano Free
                     </button>
                 </div>
