@@ -30,11 +30,19 @@ export async function getFipeValue(brand: string, model: string, year: number): 
         const modelsData = await modelsRes.json();
         const models = modelsData.modelos;
 
-        // Improved matching logic
-        const normalizedSearchModel = model.toLowerCase()
-            .replace(brand.toLowerCase(), '') // Remove brand if present in model name
-            .trim();
+        // Improved matching logic with keyword normalization
+        const normalize = (text: string) => {
+            return text.toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
+                .replace(/[^a-z0-9\s]/g, ' ') // Remove special chars
+                .replace(/\bthp\b/g, 'turbo') // Common alias
+                .replace(/\bt\b/g, 'turbo')   // Common alias
+                .replace(/\bat\b/g, 'aut')     // Common alias
+                .replace(/\bmt\b/g, 'manual')  // Common alias
+                .trim();
+        };
 
+        const normalizedSearchModel = normalize(model.replace(new RegExp(brand, 'gi'), ''));
         const searchKeywords = normalizedSearchModel.split(/\s+/).filter(k => k.length > 0);
 
         // Score based matching
@@ -42,36 +50,35 @@ export async function getFipeValue(brand: string, model: string, year: number): 
         let highestScore = 0;
 
         for (const m of models) {
-            const modelName = m.nome.toLowerCase();
+            const modelName = normalize(m.nome);
             let score = 0;
 
-            // Direct includes check (highest priority if specific)
-            if (modelName.includes(normalizedSearchModel) || normalizedSearchModel.includes(modelName)) {
-                score += 10;
-            }
-
-            // Keyword overlap check
+            // 1. Keyword overlap check
             let keywordsFound = 0;
             for (const kw of searchKeywords) {
                 if (modelName.includes(kw)) {
                     keywordsFound++;
+                    // Higher weight for specific numbers (like 3008, 1.6)
+                    if (/[0-9]/.test(kw)) {
+                        score += 5;
+                    } else {
+                        score += 2;
+                    }
                 }
             }
 
-            // Percentage of keywords found
-            if (searchKeywords.length > 0) {
-                const keywordScore = (keywordsFound / searchKeywords.length) * 5;
-                score += keywordScore;
+            // 2. Bonus for exact string contains
+            if (modelName.includes(normalizedSearchModel)) {
+                score += 10;
             }
 
-            // Tie-breaker: prefer shorter names if scores are equal (usually more generic)
+            // 3. Penalty for length difference (prefer closer matches)
+            const lengthDiff = Math.abs(modelName.length - normalizedSearchModel.length);
+            score -= lengthDiff * 0.1;
+
             if (score > highestScore) {
                 highestScore = score;
                 bestMatch = m;
-            } else if (score === highestScore && score > 0) {
-                if (bestMatch && modelName.length < bestMatch.nome.length) {
-                    bestMatch = m;
-                }
             }
         }
 
