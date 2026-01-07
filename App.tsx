@@ -1,4 +1,4 @@
-
+// Force deploy: 2026-01-06T21:43:00-03:00
 import React, { useState, useEffect, useMemo } from 'react';
 import { PlusCircle, Info, ChevronRight, Check, Trash2, Car as CarIcon, X, ShieldAlert, AlertTriangle, MapPinned, BellRing, Trophy, PartyPopper, PenTool, Eye, MapPin, CheckCircle2, Navigation, ExternalLink, ShieldCheck, Scale, FileText, Crown, Download, Lock, Printer, Fingerprint, CreditCard, Loader2, User as UserIcon, Siren, ClipboardList, CheckSquare, Square, Bell, Sparkles, Flag, Activity, Zap } from 'lucide-react';
 import Layout from './components/Layout';
