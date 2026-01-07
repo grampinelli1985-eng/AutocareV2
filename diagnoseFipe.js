@@ -1,61 +1,56 @@
 
 const BASE_URL = 'https://parallelum.com.br/fipe/api/v1/carros';
 
-export interface FipeData {
-    Valor: string;
-    Marca: string;
-    Modelo: string;
-    AnoModelo: number;
-    Combustivel: string;
-    CodigoFipe: string;
-    MesReferencia: string;
-    TipoVeiculo: number;
-    SiglaCombustivel: string;
-}
-
-export async function getFipeValue(brand: string, model: string, year: number, fuel?: string): Promise<FipeData | null> {
+async function getFipeValue(brand, model, year, fuel) {
     try {
+        console.log(`\n--- Starting FIPE Debug ---`);
+        console.log(`Input Brand: ${brand}`);
+        console.log(`Input Model/Engine/Trans: ${model}`);
+        console.log(`Input Year: ${year}`);
+        console.log(`Input Fuel: ${fuel}`);
+
         // 1. Get Brands
         const brandsRes = await fetch(`${BASE_URL}/marcas`);
-        if (!brandsRes.ok) return null;
         const brands = await brandsRes.json();
 
-        // Flexible brand matching (matches "Chevrolet" to "GM - Chevrolet", "Volkswagen" to "VW - VolksWagen")
         const normalizedBrand = brand.toLowerCase().trim();
-        const brandObj = brands.find((b: any) => {
+        const brandObj = brands.find((b) => {
             const name = b.nome.toLowerCase();
             return name === normalizedBrand || name.includes(normalizedBrand) || normalizedBrand.includes(name);
         });
 
-        if (!brandObj) return null;
+        if (!brandObj) {
+            console.log(`FAILED: Brand not found: ${brand}`);
+            return null;
+        }
+        console.log(`Found Brand: ${brandObj.nome} (${brandObj.codigo})`);
         const brandId = brandObj.codigo;
 
         // 2. Get Models
         const modelsRes = await fetch(`${BASE_URL}/marcas/${brandId}/modelos`);
-        if (!modelsRes.ok) return null;
         const modelsData = await modelsRes.json();
         const models = modelsData.modelos;
 
-        // Improved matching logic with keyword normalization
-        const normalize = (text: string) => {
+        const normalize = (text) => {
             return text.toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
-                .replace(/[^a-z0-9\s]/g, ' ') // Remove special chars
-                .replace(/\bthp\b/g, 'turbo') // Common alias
-                .replace(/\btsi\b/g, 'turbo') // Common alias
-                .replace(/\bt\b/g, 'turbo')   // Common alias
-                .replace(/\bat\b/g, 'aut')     // Common alias
-                .replace(/\bautomatico\b/g, 'aut') // Common alias
-                .replace(/\bcvt\b/g, 'aut')    // Common alias
-                .replace(/\bmt\b/g, 'manual')  // Common alias
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9\s]/g, ' ')
+                .replace(/\bthp\b/g, 'turbo')
+                .replace(/\btsi\b/g, 'turbo')
+                .replace(/\bt\b/g, 'turbo')
+                .replace(/\bat\b/g, 'aut')
+                .replace(/\bautomatico\b/g, 'aut')
+                .replace(/\bcvt\b/g, 'aut')
+                .replace(/\bmt\b/g, 'manual')
                 .trim();
         };
 
         const normalizedSearchModel = normalize(model.replace(new RegExp(brand, 'gi'), ''));
         const searchKeywords = normalizedSearchModel.split(/\s+/).filter(k => k.length > 0);
+        console.log(`Search Keywords: [${searchKeywords.join(', ')}]`);
 
         // 3. Score and collect candidates
-        const candidates: { m: any, score: number }[] = [];
+        const candidates = [];
 
         for (const m of models) {
             const modelName = normalize(m.nome);
@@ -81,27 +76,21 @@ export async function getFipeValue(brand: string, model: string, year: number, f
             }
         }
 
-        // Sort candidates by score descending
         candidates.sort((a, b) => b.score - a.score);
 
         // 4. Validate top candidates against year availability
-        let finalModelId = null;
-        let finalYearId = null;
         let finalData = null;
-
-        // Take top 5 candidates to avoid excessive API calls
         const topCandidates = candidates.slice(0, 5);
 
         for (const candidate of topCandidates) {
             const modelId = candidate.m.codigo;
+            console.log(`Testing candidate: ${candidate.m.nome} (Score: ${candidate.score.toFixed(2)})`);
 
-            // Get Years for this candidate
             const yearsRes = await fetch(`${BASE_URL}/marcas/${brandId}/modelos/${modelId}/anos`);
             if (!yearsRes.ok) continue;
             const years = await yearsRes.json();
 
-            // Match year and fuel
-            const yearObj = years.find((y: any) => {
+            const yearObj = years.find((y) => {
                 const nameMatches = y.nome.includes(year.toString());
                 if (!fuel) return nameMatches;
 
@@ -109,58 +98,37 @@ export async function getFipeValue(brand: string, model: string, year: number, f
                 if (normalizedFuel.includes('diesel')) return nameMatches && y.nome.toLowerCase().includes('diesel');
                 if (normalizedFuel.includes('etanol') || normalizedFuel.includes('alcool')) return nameMatches && y.nome.toLowerCase().includes('alcool');
                 return nameMatches && (y.nome.toLowerCase().includes('gasolina') || !y.nome.toLowerCase().includes('diesel'));
-            }) || years.find((y: any) => y.nome.includes(year.toString()));
+            }) || years.find((y) => y.nome.includes(year.toString()));
 
             if (yearObj) {
                 const yearId = yearObj.codigo;
-                // Fetch final data to confirm validity
                 const finalRes = await fetch(`${BASE_URL}/marcas/${brandId}/modelos/${modelId}/anos/${yearId}`);
                 if (finalRes.ok) {
                     finalData = await finalRes.json();
-                    finalModelId = modelId;
-                    finalYearId = yearId;
-                    break; // Found the best valid candidate
+                    console.log(`  MATCH FOUND: ${candidate.m.nome} Year: ${yearObj.nome}`);
+                    break;
                 }
+            } else {
+                console.log(`  Year ${year} not available for this candidate.`);
             }
         }
 
+        if (!finalData) {
+            console.log(`FAILED: No valid model/year match found.`);
+            return null;
+        }
+
+        console.log(`SUCCESS: Value = ${finalData.Valor}`);
         return finalData;
     } catch (error) {
-        console.error('Error fetching FIPE data:', error);
+        console.error('CRITICAL ERROR:', error);
         return null;
     }
 }
 
-export async function getFipeBrands(): Promise<{ codigo: string; nome: string }[]> {
-    try {
-        const res = await fetch(`${BASE_URL}/marcas`);
-        if (!res.ok) return [];
-        return await res.json();
-    } catch (error) {
-        console.error('Error fetching FIPE brands:', error);
-        return [];
-    }
-}
-
-export async function getFipeModels(brandId: string): Promise<{ codigo: string; nome: string }[]> {
-    try {
-        const res = await fetch(`${BASE_URL}/marcas/${brandId}/modelos`);
-        if (!res.ok) return [];
-        const data = await res.json();
-        return data.modelos || [];
-    } catch (error) {
-        console.error('Error fetching FIPE models:', error);
-        return [];
-    }
-}
-
-export async function getFipeYears(brandId: string, modelId: string): Promise<{ codigo: string; nome: string }[]> {
-    try {
-        const res = await fetch(`${BASE_URL}/marcas/${brandId}/modelos/${modelId}/anos`);
-        if (!res.ok) return [];
-        return await res.json();
-    } catch (error) {
-        console.error('Error fetching FIPE years:', error);
-        return [];
-    }
-}
+// Test cases
+(async () => {
+    await getFipeValue("Peugeot", "3008 1.6 THP CVT", 2018, "Gasolina");
+    await getFipeValue("Toyota", "Yaris 1.5 CVT", 2023, "Flex");
+    await getFipeValue("Volkswagen", "Polo 1.0 TSI Automático", 2022, "Gasolina");
+})();

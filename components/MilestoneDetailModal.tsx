@@ -13,6 +13,7 @@ interface MilestoneDetailModalProps {
     onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
     selectedFile: File | null;
     isCapturing: boolean;
+    userPlan?: 'free' | 'premium';
 }
 
 export const MilestoneDetailModal: React.FC<MilestoneDetailModalProps> = ({
@@ -25,6 +26,7 @@ export const MilestoneDetailModal: React.FC<MilestoneDetailModalProps> = ({
     onFileSelect,
     selectedFile,
     isCapturing,
+    userPlan = 'free',
 }) => {
     if (!milestone) return null;
 
@@ -75,11 +77,12 @@ export const MilestoneDetailModal: React.FC<MilestoneDetailModalProps> = ({
                                 {isCapturing ? <Loader2 size={24} className="animate-spin" /> : selectedFile ? <FileText size={24} /> : <Camera size={24} />}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs font-black uppercase text-slate-800 dark:text-white truncate">
+                                <p className="text-xs font-black uppercase text-slate-800 dark:text-white truncate flex items-center gap-2">
                                     {selectedFile ? selectedFile.name : 'Escanear Nota Fiscal'}
+                                    {userPlan === 'free' && <Lock size={12} className="text-amber-500" />}
                                 </p>
                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                                    {selectedFile ? 'Comprovante pronto' : 'IA vai analisar os itens'}
+                                    {userPlan === 'free' ? 'Disponível no Premium' : selectedFile ? 'Comprovante pronto' : 'IA vai analisar os itens'}
                                 </p>
                             </div>
                             {selectedFile && <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />}

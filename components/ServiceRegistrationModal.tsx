@@ -9,6 +9,7 @@ interface ServiceRegistrationModalProps {
     onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
     isScanning: boolean;
     onInvoiceScan: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    userPlan?: 'free' | 'premium';
 }
 
 export const ServiceRegistrationModal: React.FC<ServiceRegistrationModalProps> = ({
@@ -17,6 +18,7 @@ export const ServiceRegistrationModal: React.FC<ServiceRegistrationModalProps> =
     onSubmit,
     isScanning,
     onInvoiceScan,
+    userPlan = 'free',
 }) => {
     if (!task) return null;
 
@@ -59,8 +61,11 @@ export const ServiceRegistrationModal: React.FC<ServiceRegistrationModalProps> =
                                         </>
                                     ) : (
                                         <>
-                                            <Zap size={16} className="text-indigo-600 animate-pulse" />
-                                            <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-tight">Escanear Nota Fiscal</span>
+                                            <Zap size={16} className={userPlan === 'premium' ? "text-indigo-600 animate-pulse" : "text-amber-500"} />
+                                            <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-tight flex items-center gap-1">
+                                                {userPlan === 'free' && <Lock size={12} />}
+                                                {userPlan === 'free' ? 'Scanner (Premium)' : 'Escanear Nota Fiscal'}
+                                            </span>
                                         </>
                                     )}
                                 </div>

@@ -856,6 +856,7 @@ const App: React.FC = () => {
     const vehicleData: any = {
       brand: fd.get('brand') as string,
       model: fd.get('model') as string,
+      version: fd.get('version') as string,
       year: parseInt(fd.get('year') as string),
       engine: fd.get('engine') as string,
       fuel: fd.get('fuel') as string,
@@ -906,7 +907,7 @@ const App: React.FC = () => {
       addNotification({
         type: 'info',
         title: 'Novo Veículo Adicionado',
-        message: `${vehicleData.brand} ${vehicleData.model} agora faz parte da sua garagem.`
+        message: `${vehicleData.brand} ${vehicleData.model} ${vehicleData.version || ''} agora faz parte da sua garagem.`
       });
     }
     setShowAddVehicleModal(false);
@@ -1587,18 +1588,18 @@ const App: React.FC = () => {
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 shadow-sm border border-slate-100 dark:border-slate-800">
               <MaintenanceTimeline milestones={milestones} onCompleteTask={(task, km) => setTaskToComplete({ task, targetKm: km })} onViewDetail={(m) => handleOpenMilestoneDetail(m)} />
-            </div>
 
-            {checkedTaskIds.length > 0 && (
-              <div className="pt-4 shrink-0">
-                <button
-                  onClick={handleRegisterFromChecklist}
-                  className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                  <PenTool size={18} /> Registrar Serviços ({checkedTaskIds.length})
-                </button>
-              </div>
-            )}
+              {checkedTaskIds.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    onClick={handleRegisterFromChecklist}
+                    className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <PenTool size={18} /> Registrar Serviços ({checkedTaskIds.length})
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1793,6 +1794,7 @@ const App: React.FC = () => {
           onFileSelect={handleInvoiceScan}
           selectedFile={null}
           isCapturing={isScanning}
+          userPlan={userPlan}
         />
 
         <ServiceRegistrationModal
@@ -1801,6 +1803,7 @@ const App: React.FC = () => {
           onSubmit={saveServiceRecord}
           isScanning={isScanning}
           onInvoiceScan={handleInvoiceScan}
+          userPlan={userPlan}
         />
 
         <VehicleDeletionModal

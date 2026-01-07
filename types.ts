@@ -78,6 +78,7 @@ export interface Vehicle {
   id: string;
   brand: string;
   model: string;
+  version?: string;
   year: number;
   engine: string;
   fuel: string;
