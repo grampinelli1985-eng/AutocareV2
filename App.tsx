@@ -512,7 +512,12 @@ const App: React.FC = () => {
   useEffect(() => {
     if (selectedVehicle && isLoggedIn) {
       setIsFipeLoading(true);
-      getFipeValue(selectedVehicle.brand, selectedVehicle.model, selectedVehicle.year)
+      getFipeValue(
+        selectedVehicle.brand,
+        `${selectedVehicle.model} ${selectedVehicle.engine} ${selectedVehicle.transmission}`,
+        selectedVehicle.year,
+        selectedVehicle.fuel
+      )
         .then(data => {
           setFipeData(data);
           setIsFipeLoading(false);
