@@ -16,7 +16,7 @@ interface AddVehicleModalProps {
     onBrandChange: (brand: string) => void;
 }
 
-const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
+export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
     isOpen,
     isAddingNew,
     selectedVehicle,

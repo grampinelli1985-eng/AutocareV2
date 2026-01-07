@@ -10,7 +10,7 @@ interface TheftReportModalProps {
     onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 }
 
-const TheftReportModal: React.FC<TheftReportModalProps> = ({
+export const TheftReportModal: React.FC<TheftReportModalProps> = ({
     isOpen,
     userPlan,
     brazilianStates,

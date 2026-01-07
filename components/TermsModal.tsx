@@ -8,7 +8,7 @@ interface TermsModalProps {
     onClose: () => void;
 }
 
-const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onAccept, onClose }) => {
+export const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onAccept, onClose }) => {
     if (!isOpen) return null;
 
     return (

@@ -1,17 +1,38 @@
 // Force deploy: 2026-01-06T21:43:00-03:00
 import React, { useState, useEffect, useMemo } from 'react';
-import { PlusCircle, Info, ChevronRight, Check, Trash2, Car as CarIcon, X, ShieldAlert, AlertTriangle, MapPinned, BellRing, Trophy, PartyPopper, PenTool, Eye, MapPin, CheckCircle2, Navigation, ExternalLink, ShieldCheck, Scale, FileText, Crown, Download, Lock, Printer, Fingerprint, CreditCard, Loader2, User as UserIcon, Siren, ClipboardList, CheckSquare, Square, Bell, Sparkles, Flag, Activity, Zap } from 'lucide-react';
+import { PlusCircle, ChevronRight, Trash2, Car as CarIcon, PenTool, Eye, ShieldCheck, FileText, Lock, Loader2, Sparkles, AlertTriangle, Download, ShieldAlert, Trophy, MapPinned, MapPin, Navigation, Flag, Crown } from 'lucide-react';
 import Layout from './components/Layout';
 import VehicleCard from './components/VehicleCard';
 import MaintenanceTimeline from './components/MaintenanceTimeline';
 import LoginScreen from './components/LoginScreen';
 import ChatBot from './components/ChatBot';
-import TermsModal from './components/TermsModal';
-import AddVehicleModal from './components/AddVehicleModal';
-import SightingModal from './components/SightingModal';
-import TheftReportModal from './components/TheftReportModal';
+import { TermsModal } from './components/TermsModal';
+import { AddVehicleModal } from './components/AddVehicleModal';
+import { TheftReportModal } from './components/TheftReportModal';
+import { SightingModal } from './components/SightingModal';
+import { MilestoneDetailModal } from './components/MilestoneDetailModal';
+import { RecoverySuccessModal } from './components/RecoverySuccessModal';
+import { ServiceRegistrationModal } from './components/ServiceRegistrationModal';
+import { VehicleDeletionModal } from './components/VehicleDeletionModal';
+import { SightingSuccessModal } from './components/SightingSuccessModal';
+import { NotificationCenterModal } from './components/NotificationCenterModal';
+import { TheftAlertModal } from './components/TheftAlertModal';
+import { MaintenanceReportModal } from './components/MaintenanceReportModal';
+import { PremiumSubscriptionModal } from './components/PremiumSubscriptionModal';
+import { PaymentSheet } from './components/PaymentSheet';
+import { PerformanceCard } from './components/PerformanceCard';
+import { FipeCard } from './components/FipeCard';
+import { FuelRegistrationModal } from './components/FuelRegistrationModal';
+import { HealthExplanationModal } from './components/HealthExplanationModal';
+import { FuelAdviceModal } from './components/FuelAdviceModal';
+import { ReceiptViewModal } from './components/ReceiptViewModal';
+import { AccountDeletionModal } from './components/AccountDeletionModal';
+import { RecoveryConfirmationModal } from './components/RecoveryConfirmationModal';
+import { FuelConsumptionCard } from './components/FuelConsumptionCard';
+import { PreventiveRadarCard } from './components/PreventiveRadarCard';
 import { Vehicle, MaintenanceTask, ServiceRecord, TheftReport, MaintenanceMilestone, MaintenancePriority, TheftSighting, FuelLog } from './types';
 import { getSmartMaintenanceAdvice, getFuelEconomyAdvice, analyzeInvoice } from './services/geminiService';
+import { getFipeValue, FipeData } from './services/fipeService';
 import { findManualForVehicle } from './maintenanceData';
 import { BRANDS, FUEL_TYPES, TRANSMISSIONS, MODELS_BY_BRAND, COMMON_ENGINES, DEFAULT_MAINTENANCE_PLAN } from './constants';
 import { supabase } from './services/supabase';
@@ -45,7 +66,6 @@ const App: React.FC = () => {
   const [userPlan, setUserPlan] = useState<'free' | 'premium'>('free');
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
@@ -88,7 +108,8 @@ const App: React.FC = () => {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showPaymentSheet, setShowPaymentSheet] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false); // For TheftReportModal
+  const [showSightingModal, setShowSightingModal] = useState(false); // For SightingModal
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [taskToComplete, setTaskToComplete] = useState<{ task: MaintenanceTask, targetKm: number } | null>(null);
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
@@ -103,6 +124,10 @@ const App: React.FC = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedReceiptUrl, setSelectedReceiptUrl] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [fuelCostInput, setFuelCostInput] = useState('');
+  const [showPerformanceModal, setShowPerformanceModal] = useState(false);
+  const [fipeData, setFipeData] = useState<FipeData | null>(null);
+  const [isFipeLoading, setIsFipeLoading] = useState(false);
 
   // Alertas e Recuperação
   const [reportingTheftVehicleId, setReportingTheftVehicleId] = useState<string | null>(null);
@@ -189,7 +214,51 @@ const App: React.FC = () => {
       });
     }
     return result;
-  }, [selectedVehicle, records]);
+  }, [selectedVehicle, vehicleRecords]);
+
+  const performanceScore = useMemo(() => {
+    if (!selectedVehicle) return { eco: 0, conservation: 0, level: 1, title: 'Iniciante' };
+
+    // 1. Eco Score (0-100) - Heurística simples baseada no tipo de combustível
+    let eco = 70; // Score base para quem não tem logs suficientes
+    if (averageConsumption) {
+      const avg = parseFloat(averageConsumption);
+      // Alvos médios realistas (km/l)
+      let target = 10;
+      if (selectedVehicle.fuel.includes('Etanol')) target = 8.5;
+      if (selectedVehicle.fuel.includes('Diesel')) target = 13.5;
+      if (selectedVehicle.fuel.includes('Híbrido')) target = 18;
+
+      const diff = avg - target;
+      eco = Math.min(100, Math.max(10, Math.round(70 + (diff * 5))));
+    }
+
+    // 2. Conservation Score (0-100) - Baseado em revisões em dia e saúde IA
+    const doneCount = milestones.filter(m => m.status === 'done').length;
+    const overdueCount = milestones.filter(m => m.status === 'overdue').length;
+    const totalPast = doneCount + overdueCount;
+
+    let maintenanceBonus = 100;
+    if (totalPast > 0) {
+      maintenanceBonus = Math.round((doneCount / totalPast) * 100);
+    }
+
+    const aiHealth = aiAnalysis?.healthScore || 85;
+    const conservation = Math.round((maintenanceBonus * 0.6) + (aiHealth * 0.4));
+
+    // 3. Nível (1-10)
+    const avgScore = (eco + conservation) / 2;
+    const level = Math.max(1, Math.min(10, Math.floor(avgScore / 10)));
+
+    const titles = [
+      'Recém-Chegado', 'Motorista Consciente', 'Guardião do Veículo',
+      'Piloto Eficiente', 'Ninja da Manutenção', 'Estrategista das Ruas',
+      'Líder da Estrada', 'Mestre de Frota', 'Embaixador AutoCare', 'Lenda do Volante'
+    ];
+    const title = titles[level - 1] || 'Especialista';
+
+    return { eco, conservation, level, title };
+  }, [selectedVehicle, averageConsumption, milestones, aiAnalysis]);
 
   const unreadNotificationsCount = useMemo(() =>
     notifications.filter(n => !n.isRead).length
@@ -440,6 +509,18 @@ const App: React.FC = () => {
     }
   }, [selectedVehicle?.id, selectedVehicle?.currentMileage, averageConsumption, isLoggedIn, userPlan]);
 
+  useEffect(() => {
+    if (selectedVehicle && isLoggedIn) {
+      setIsFipeLoading(true);
+      getFipeValue(selectedVehicle.brand, selectedVehicle.model, selectedVehicle.year)
+        .then(data => {
+          setFipeData(data);
+          setIsFipeLoading(false);
+        })
+        .catch(() => setIsFipeLoading(false));
+    }
+  }, [selectedVehicle?.id, isLoggedIn]);
+
   const addNotification = (notif: Omit<NotificationItem, 'id' | 'date' | 'isRead'>) => {
     const newNotif: NotificationItem = {
       ...notif,
@@ -491,7 +572,7 @@ const App: React.FC = () => {
       const { error: vError } = await supabase
         .from('vehicles')
         .delete()
-        .eq('user_id', session.user.id);
+        .eq('owner_id', session.user.id);
 
       if (vError) throw vError;
 
@@ -1181,6 +1262,19 @@ const App: React.FC = () => {
     setCheckedTaskIds(m.tasks.map(t => t.id));
   };
 
+  const handleFuelCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (!value) {
+      setFuelCostInput('');
+      return;
+    }
+    const amount = (parseInt(value) / 100).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+    setFuelCostInput(amount);
+  };
+
   const handleFuelSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!session?.user || !selectedVehicleId) return;
@@ -1188,7 +1282,10 @@ const App: React.FC = () => {
     const fd = new FormData(e.currentTarget);
     const mileage = parseInt(fd.get('mileage') as string);
     const liters = parseFloat(fd.get('liters') as string);
-    const cost = parseFloat(fd.get('cost') as string) || 0;
+
+    // Parse currency BRL back to number
+    const costString = fuelCostInput.replace(/[^\d,]/g, '').replace(',', '.');
+    const cost = parseFloat(costString) || 0;
 
     const newFuelLog: any = {
       vehicle_id: selectedVehicleId,
@@ -1222,6 +1319,7 @@ const App: React.FC = () => {
 
     setFuelLogs(prev => [...prev, mappedLog]);
     setShowFuelModal(false);
+    setFuelCostInput('');
 
     // Update vehicle mileage if higher
     if (mileage > (selectedVehicle?.currentMileage || 0)) {
@@ -1284,11 +1382,7 @@ const App: React.FC = () => {
   };
 
   const handleTabChange = (tabId: string) => {
-    if (tabId === 'chat') {
-      setIsChatOpen(true);
-    } else {
-      setActiveTab(tabId);
-    }
+    setActiveTab(tabId);
   };
 
   if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />;
@@ -1305,390 +1399,51 @@ const App: React.FC = () => {
 
 
         {/* POP-UP ALERTA COMUNITÁRIO (DINÂMICO PELO PLANO DO EMISSOR) */}
-        {activeCommunityAlert && (activeCommunityAlert.report.reporterPlan === 'premium' || (
-          // Se o emissor for Free, só mostrar se o receptor estiver num raio de 50km
-          !activeCommunityAlert.report.latitude || !vehicles[0]?.lastKnownLat ? true :
-            calculateDistance(
-              vehicles[0]?.lastKnownLat || 0,
-              vehicles[0]?.lastKnownLng || 0,
-              activeCommunityAlert.report.latitude,
-              activeCommunityAlert.report.longitude
-            ) <= 50
-        )) && (
-            <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-red-600/20 backdrop-blur-md animate-in fade-in">
-              <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] p-8 shadow-2xl border-4 border-red-600 text-center space-y-6 animate-in zoom-in-95">
-                <div className="relative mx-auto w-24 h-24">
-                  <div className="absolute inset-0 bg-red-600 rounded-full animate-ping opacity-25" />
-                  <div className="relative bg-red-600 text-white w-24 h-24 rounded-full flex items-center justify-center shadow-xl">
-                    <Siren size={48} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-black text-red-600 uppercase tracking-tighter">Alerta de Roubo!</h3>
-                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Atenção Comunidade AutoCare</p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800 p-5 rounded-3xl border border-slate-100 dark:border-slate-800">
-                  <p className="text-lg font-black text-slate-800 dark:text-white uppercase">{activeCommunityAlert.vehicle.brand} {activeCommunityAlert.vehicle.model}</p>
-                  <div className="mt-2 flex items-center justify-center gap-2">
-                    <span className="bg-slate-800 text-white px-3 py-1 rounded-lg font-mono text-sm tracking-widest">{activeCommunityAlert.vehicle.plate}</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 font-bold mt-3 uppercase tracking-wider italic">Visto por último em: {activeCommunityAlert.report.city} - {activeCommunityAlert.report.state}</p>
+        <TheftAlertModal
+          alert={activeCommunityAlert && (activeCommunityAlert.report.reporterPlan === 'premium' || (
+            !activeCommunityAlert.report.latitude || !vehicles[0]?.lastKnownLat ? true :
+              calculateDistance(
+                vehicles[0]?.lastKnownLat || 0,
+                vehicles[0]?.lastKnownLng || 0,
+                activeCommunityAlert.report.latitude,
+                activeCommunityAlert.report.longitude
+              ) <= 50
+          )) ? activeCommunityAlert : null}
+          onClose={() => setActiveCommunityAlert(null)}
+        />
 
-                  {activeCommunityAlert.report.description && (
-                    <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-800/50 text-left">
-                      <p className="text-[9px] text-red-600 dark:text-red-400 font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                        <Info size={10} /> Detalhes da Ocorrência:
-                      </p>
-                      <p className="text-[11px] text-slate-700 dark:text-slate-200 font-medium leading-relaxed italic">
-                        "{activeCommunityAlert.report.description}"
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">Fique atento! Se localizar este veículo, informe um avistamento no mapa para ajudar o proprietário.</p>
-                <button
-                  onClick={() => setActiveCommunityAlert(null)}
-                  className="w-full bg-slate-900 text-white py-5 rounded-[24px] font-black uppercase text-xs tracking-widest shadow-xl active:scale-95"
-                >
-                  Entendido, ficarei de olho
-                </button>
-              </div>
-            </div>
-          )}
+        <NotificationCenterModal
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+          notifications={notifications}
+        />
 
-        {/* MODAL CENTRO DE NOTIFICAÇÕES */}
-        {showNotifications && (
-          <div className="fixed inset-0 z-[900] flex items-center justify-center p-6 bg-slate-900/70 backdrop-blur-md animate-in fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] shadow-2xl flex flex-col max-h-[75vh] border border-slate-200 dark:border-slate-800 overflow-hidden">
-              <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none"><Bell size={18} /></div>
-                  <h2 className="font-black text-slate-800 dark:text-white uppercase text-sm tracking-tight">Centro de Alertas</h2>
-                </div>
-                <button onClick={() => setShowNotifications(false)} className="p-2 text-slate-400 hover:text-slate-600 transition-colors"><X size={24} /></button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {notifications.length > 0 ? (
-                  notifications.map(n => (
-                    <div key={n.id} className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex gap-4 transition-all hover:bg-white dark:hover:bg-slate-800">
-                      <div className={`mt-1 shrink-0 w-2 h-2 rounded-full ${n.type === 'theft' ? 'bg-red-500 animate-pulse' : n.type === 'maintenance' ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
-                      <div className="space-y-1 flex-1">
-                        <div className="flex justify-between items-start">
-                          <p className="text-xs font-black text-slate-800 dark:text-white uppercase leading-none tracking-tight">{n.title}</p>
-                          {n.mapUrl && (
-                            <a
-                              href={n.mapUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase tracking-tighter hover:underline"
-                            >
-                              <ExternalLink size={10} />
-                              Ver no Mapa
-                            </a>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-snug">{n.message}</p>
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest pt-1">{new Date(n.date).toLocaleDateString()} {new Date(n.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="py-20 text-center space-y-4">
-                    <Bell size={48} className="text-slate-200 dark:text-slate-800 mx-auto" />
-                    <p className="text-sm font-bold text-slate-400">Nenhuma notificação por enquanto.</p>
-                  </div>
-                )}
-              </div>
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
-                <button onClick={() => setShowNotifications(false)} className="w-full bg-slate-900 dark:bg-indigo-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95">Fechar</button>
-              </div>
-            </div>
-          </div>
-        )}
+        <MaintenanceReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          vehicle={selectedVehicle}
+          records={vehicleRecords}
+          onDownload={printReport}
+          isDownloading={isGeneratingPdf}
+          onViewReceipt={(url) => {
+            setSelectedReceiptUrl(url);
+            setShowReceiptModal(true);
+          }}
+        />
 
-        {/* MODAL RELATÓRIO PDF (PREMIUM) */}
-        {showReportModal && selectedVehicle && (
-          <div className="fixed inset-0 z-[700] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-md animate-in fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden flex flex-col h-[85vh]">
-              <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 no-print">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-600 text-white rounded-xl"><FileText size={20} /></div>
-                  <h2 className="font-black text-slate-800 dark:text-white uppercase text-sm tracking-tight">Relatório de Manutenção</h2>
-                </div>
-                <button onClick={() => setShowReportModal(false)} className="p-2 text-slate-400 hover:text-slate-600"><X size={24} /></button>
-              </div>
+        <PremiumSubscriptionModal
+          isOpen={showSubscriptionModal}
+          onClose={() => setShowSubscriptionModal(false)}
+          onUpgrade={handleUpgradeToPremiumTrigger}
+        />
 
-              <div id="printable-report" className="flex-1 overflow-y-auto p-12 space-y-12 bg-white text-slate-900 pdf-content-area">
-                <div className="h-4 bg-indigo-600 rounded-t-lg -mx-12 -mt-12 mb-8"></div>
-                <div className="flex items-center justify-between border-b-8 border-indigo-600 pb-8">
-                  <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-xl">
-                      <CarIcon size={56} />
-                    </div>
-                    <div>
-                      <h1 className="text-4xl font-black text-indigo-600 tracking-tighter uppercase leading-none">AutoCare IA</h1>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2">Gestão Inteligente Automotiva</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Documento Oficial</p>
-                    <p className="text-sm font-black text-slate-800">Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-12 pt-4">
-                  <div className="space-y-4">
-                    <h4 className="text-[10px] font-black uppercase text-indigo-600 border-b-2 border-indigo-100 pb-1 tracking-widest">Dados do Proprietário</h4>
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-slate-100 rounded-2xl text-slate-400"><UserIcon size={24} /></div>
-                      <div>
-                        <p className="text-base font-black text-slate-800">Usuário AutoCare</p>
-                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-tight">Assinante Premium</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <h4 className="text-[10px] font-black uppercase text-indigo-600 border-b-2 border-indigo-100 pb-1 tracking-widest">Informações do Veículo</h4>
-                    <div>
-                      <p className="text-xl font-black text-slate-800 flagship leading-tight uppercase">{selectedVehicle.brand} {selectedVehicle.model}</p>
-                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">{selectedVehicle.year} • {selectedVehicle.engine} • PLACA {selectedVehicle.plate}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-8 rounded-[32px] flex justify-around items-center border-2 border-slate-100 shadow-sm">
-                  <div className="text-center">
-                    <p className="text-3xl font-black text-indigo-600">{selectedVehicle.currentMileage.toLocaleString()}</p>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">KM Atual Registrado</p>
-                  </div>
-                  <div className="w-px h-12 bg-slate-200" />
-                  <div className="text-center">
-                    <p className="text-3xl font-black text-slate-800">{vehicleRecords.length}</p>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Serviços Históricos</p>
-                  </div>
-                </div>
-
-                <div className="space-y-8">
-                  <div className="flex items-center gap-3 bg-slate-900 text-white px-6 py-3 rounded-2xl">
-                    <ClipboardList size={20} />
-                    <h4 className="text-[11px] font-black uppercase tracking-widest">Descrição Completa dos Serviços e Peças</h4>
-                  </div>
-
-                  {vehicleRecords.length > 0 ? (
-                    <div className="space-y-10">
-                      {vehicleRecords.map(record => (
-                        <div key={record.id} className="relative border-l-8 border-indigo-600 pl-8 space-y-4">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="text-lg font-black text-slate-800 uppercase tracking-tight">{record.taskTitle}</p>
-                              <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mt-1">Realizado em {new Date(record.date).toLocaleDateString('pt-BR')} • {record.mileage.toLocaleString()} KM</p>
-                            </div>
-                            <div className="text-right flex flex-col items-end gap-2">
-                              <p className="text-sm font-black text-indigo-700 tracking-tight">R$ {record.cost.toFixed(2)}</p>
-                              {record.receiptUrl && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedReceiptUrl(record.receiptUrl!);
-                                    setShowReceiptModal(true);
-                                  }}
-                                  className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-colors"
-                                >
-                                  <Eye size={12} /> Ver Nota
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100">
-                            <p className="text-[9px] font-black uppercase text-slate-400 mb-3 flex items-center gap-2">
-                              <PenTool size={12} className="text-indigo-600" /> Descrição do Serviço e Detalhamento de Peças:
-                            </p>
-                            <p className="text-sm text-slate-700 leading-relaxed font-medium whitespace-pre-wrap italic">
-                              {record.notes || "Nenhum detalhe adicional informado para este registro."}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="py-24 text-center text-slate-300 italic text-base font-medium">Não há registros de serviços cadastrados para este veículo.</div>
-                  )}
-                </div>
-
-                <div className="pt-12 mt-12 border-t-4 border-slate-100 space-y-6">
-                  <div className="flex justify-between items-end">
-                    <div className="space-y-2">
-                      <p className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em]">Certificação AutoCare IA</p>
-                      <p className="text-[10px] text-slate-400 leading-relaxed max-w-[400px] font-medium italic">Documento autogerado via plataforma AutoCare. Este registro é mantido em nuvem para fins de histórico de manutenção preventiva.</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[11px] font-black uppercase text-slate-900 tracking-widest">ID de Autenticação</p>
-                      <p className="text-[10px] font-mono text-slate-300 uppercase tracking-[0.2em] mt-1">{selectedVehicle.plate}-{Date.now()}</p>
-                    </div>
-                  </div>
-                  <div className="text-center bg-slate-900 text-white py-2 rounded-xl">
-                    <p className="text-[9px] font-black uppercase tracking-[0.5em]">Garantia de Organização para seu Veículo</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4 no-print">
-                <button
-                  onClick={printReport}
-                  disabled={isGeneratingPdf}
-                  className="flex-1 bg-indigo-600 text-white py-5 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-70 transition-all"
-                >
-                  {isGeneratingPdf ? (
-                    <><Loader2 size={20} className="animate-spin" /> Gerando Documento...</>
-                  ) : (
-                    <><Download size={20} /> Baixar Relatório PDF</>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* MODAL PLANO PREMIUM */}
-        {showSubscriptionModal && (
-          <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-lg animate-in fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] p-8 shadow-2xl space-y-6 border border-amber-100 dark:border-amber-900/30">
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/30 rounded-full mx-auto flex items-center justify-center">
-                  <Crown size={32} className="text-amber-600" />
-                </div>
-                <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">AutoCare IA Premium</h2>
-                <p className="text-xs text-slate-500 font-bold">Libere todo o potencial da sua garagem</p>
-                <p className="text-xs text-slate-500 font-bold">Cancelamento disponível pela Google Play.</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl">
-                  <PlusCircle size={20} className="text-indigo-600" />
-                  <div>
-                    <p className="text-sm font-bold">Veículos Ilimitados</p>
-                    <p className="text-[10px] text-slate-500">Cadastre todos os carros da família.</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl">
-                  <Sparkles size={20} className="text-indigo-600" />
-                  <div>
-                    <p className="text-sm font-bold">IA Chat Especialista</p>
-                    <p className="text-[10px] text-slate-500">Dúvidas mecânicas respondidas por IA sem limites diários..</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl">
-                  <FileText size={20} className="text-indigo-600" />
-                  <div>
-                    <p className="text-sm font-bold">Relatórios em PDF</p>
-                    <p className="text-[10px] text-slate-500">Gere histórico pronto para impressão.</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl">
-                  <Activity size={20} className="text-indigo-600" />
-                  <div>
-                    <p className="text-sm font-bold">Dicas de Economia IA</p>
-                    <p className="text-[10px] text-slate-500">Radar inteligente para reduzir gastos com combustível.</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl">
-                  <ShieldAlert size={20} className="text-red-600" />
-                  <div>
-                    <p className="text-sm font-bold">Alerta de Roubo</p>
-                    <p className="text-[10px] text-slate-500">Rede ampliada de proteção comunitária ativa.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-center pt-2">
-                <p className="text-3xl font-black text-slate-800 dark:text-white">R$ 15,99 <span className="text-sm font-bold text-slate-400">/mês</span></p>
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  onClick={handleUpgradeToPremiumTrigger}
-                  className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black active:scale-95 shadow-xl flex items-center justify-center gap-2 uppercase text-xs tracking-widest"
-                >
-                  Assinar Agora
-                </button>
-                <button
-                  onClick={() => setShowSubscriptionModal(false)}
-                  className="w-full py-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest"
-                >
-                  Continuar com Plano Free
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* SIMULAÇÃO DE PAGAMENTO LOJA (STORE SHEET) */}
-        {showPaymentSheet && (
-          <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-[32px] p-6 shadow-2xl animate-in slide-in-from-bottom-full duration-300">
-              <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6" />
-
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
-                  <CarIcon size={32} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black dark:text-white">AutoCare IA Premium</h3>
-                  <p className="text-sm text-slate-500 font-medium italic">Assinatura Mensal</p>
-                </div>
-                <div className="ml-auto text-right">
-                  <p className="text-xl font-black text-slate-800 dark:text-white">R$ 15,99</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">por mês</p>
-                </div>
-              </div>
-
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between items-center py-3 border-b border-slate-50 dark:border-slate-800">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Conta</span>
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{session?.user?.email || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between items-center py-3 border-b border-slate-50 dark:border-slate-800">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Plataforma</span>
-                  <div className="flex items-center gap-2">
-                    <CreditCard size={14} className="text-indigo-600" />
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                      {Capacitor.getPlatform() === 'android' ? 'Google Play Store' : 'Pagamento Seguro Web'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {isProcessingPayment ? (
-                <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                  <Loader2 size={40} className="text-indigo-600 animate-spin" />
-                  <p className="text-sm font-black text-slate-500 uppercase tracking-widest animate-pulse">Processando Compra...</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <button
-                    onClick={handleConfirmPurchase}
-                    className="w-full bg-slate-900 dark:bg-indigo-600 text-white py-5 rounded-2xl font-black flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl"
-                  >
-                    <Fingerprint size={24} />
-                    <span className="uppercase text-xs tracking-widest">
-                      {Capacitor.getPlatform() === 'android' ? 'Assinar com Google Play' : 'Ir para Pagamento Seguro'}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setShowPaymentSheet(false)}
-                    className="w-full py-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest"
-                  >
-                    Cancelar Transação
-                  </button>
-                </div>
-              )}
-
-              <p className="text-[10px] text-slate-400 text-center mt-6 leading-relaxed">
-                Cobrança recorrente. Você pode cancelar a qualquer momento nas configurações da sua conta na loja de aplicativos.
-              </p>
-            </div>
-          </div>
-        )}
+        <PaymentSheet
+          isOpen={showPaymentSheet}
+          onClose={() => setShowPaymentSheet(false)}
+          onConfirm={handleConfirmPurchase}
+          isProcessing={isProcessingPayment}
+          userEmail={session?.user?.email || null}
+        />
 
         {/* MODAL TERMOS E CONDIÇÕES JURÍDICOS */}
         <TermsModal
@@ -1707,6 +1462,16 @@ const App: React.FC = () => {
           onSubmit={handleAddVehicleSubmit}
           onPlateMask={handlePlateMask}
           onBrandChange={setSelectedBrandInModal}
+        />
+
+        <ChatBot
+          vehicle={selectedVehicle}
+          isOpen={activeTab === 'chat'}
+          onClose={() => setActiveTab('dashboard')}
+          userPlan={userPlan}
+          questionsRemaining={aiQuestionsRemaining}
+          onMessageSent={handleChatMessageSent}
+          onUpgrade={() => setShowSubscriptionModal(true)}
         />
 
         {/* DASHBOARD TAB */}
@@ -1751,91 +1516,35 @@ const App: React.FC = () => {
                     isLoading={isLoading}
                   />
 
-                  {/* CARD DE CONSUMO */}
-                  <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm">
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600">
-                          <Activity size={24} />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Consumo Real</p>
-                          <h4 className="text-lg font-black text-slate-800 dark:text-white leading-none">
-                            {averageConsumption ? `${averageConsumption} km/L` : '--- km/L'}
-                          </h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">Média Histórica</p>
-                            {averageConsumption && (
-                              <button
-                                onClick={handleResetFuel}
-                                className="text-[8px] text-red-400 font-black uppercase hover:text-red-600 transition-colors"
-                              >
-                                (Resetar)
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                  <PerformanceCard
+                    score={performanceScore}
+                    averageConsumption={averageConsumption}
+                    showModal={showPerformanceModal}
+                    setShowModal={setShowPerformanceModal}
+                  />
 
-                      {/* Radar de Consumo IA Header */}
-                      <div className="text-right">
-                        <div className="flex items-center justify-end gap-2 mb-1">
-                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Radar de Consumo IA</span>
-                          <div className="bg-indigo-100 dark:bg-indigo-500/20 p-1 rounded-lg text-indigo-600 dark:text-indigo-400">
-                            <Zap size={12} />
-                          </div>
-                        </div>
-                        {userPlan === 'premium' && <span className="bg-amber-400 text-[7px] font-black text-white px-2 py-0.5 rounded-full uppercase tracking-widest">Premium</span>}
-                      </div>
-                    </div>
+                  <FipeCard
+                    fipeData={fipeData}
+                    isLoading={isFipeLoading}
+                    conservationScore={performanceScore.conservation}
+                  />
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => setShowFuelModal(true)}
-                        className="bg-emerald-600 text-white px-4 py-3.5 rounded-2xl font-black text-[10px] active:scale-95 shadow-lg shadow-emerald-200 dark:shadow-none flex items-center justify-center gap-2 uppercase tracking-widest"
-                      >
-                        <PlusCircle size={14} /> Abastecer
-                      </button>
+                  <FuelConsumptionCard
+                    averageConsumption={averageConsumption}
+                    onReset={handleResetFuel}
+                    onRefuel={() => setShowFuelModal(true)}
+                    userPlan={userPlan}
+                    onUnlockPremium={() => setShowSubscriptionModal(true)}
+                    onShowAdvice={() => setShowFuelAdviceModal(true)}
+                    isAiLoading={isFuelAiLoading}
+                    hasAdvice={!!aiFuelAdvice?.tips}
+                  />
 
-                      {userPlan === 'free' ? (
-                        <button
-                          onClick={() => setShowSubscriptionModal(true)}
-                          className="w-full bg-indigo-600 text-[9px] font-black text-white py-3.5 rounded-2xl uppercase tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 transition-all text-center"
-                        >
-                          Unlock Premium
-                        </button>
-                      ) : (
-                        <div className="w-full">
-                          {isFuelAiLoading && !aiFuelAdvice ? (
-                            <div className="h-full bg-slate-100 dark:bg-white/5 animate-pulse rounded-2xl" />
-                          ) : aiFuelAdvice?.tips ? (
-                            <button
-                              onClick={() => setShowFuelAdviceModal(true)}
-                              className="w-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-100 dark:border-indigo-500/20"
-                            >
-                              <Activity size={14} /> Dicas IA
-                            </button>
-                          ) : (
-                            <div className="h-full bg-slate-50 dark:bg-white/5 flex items-center justify-center rounded-2xl px-2">
-                              <p className="text-[8px] text-slate-400 italic text-center leading-tight">Mais dados p/ IA</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-indigo-900 rounded-[32px] p-6 text-white shadow-xl relative overflow-hidden">
-                  <h3 className="text-lg font-bold">Radar Preventivo IA</h3>
-                  <div className="space-y-3 mt-4">
-                    {isLoading && !aiAnalysis ? <div className="h-20 bg-white/10 animate-pulse rounded-2xl" /> :
-                      aiAnalysis?.advices?.slice(0, userPlan === 'free' ? 1 : undefined).map((adv: any, i: number) => (
-                        <div key={i} className="flex gap-4 bg-white/10 p-4 rounded-2xl border border-white/10">
-                          <div className={`shrink-0 w-1.5 h-full rounded-full ${adv.urgency === 'high' ? 'bg-orange-400' : 'bg-indigo-300'}`} />
-                          <div><h4 className="text-xs font-bold uppercase text-indigo-200">{adv.title}</h4><p className="text-sm text-white/90 leading-tight">{adv.content}</p></div>
-                        </div>
-                      ))}
-                  </div>
+                  <PreventiveRadarCard
+                    isLoading={isLoading}
+                    analysis={aiAnalysis}
+                    userPlan={userPlan}
+                  />
                 </div>
               </>
             ) : (
@@ -1874,6 +1583,17 @@ const App: React.FC = () => {
             <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 shadow-sm border border-slate-100 dark:border-slate-800">
               <MaintenanceTimeline milestones={milestones} onCompleteTask={(task, km) => setTaskToComplete({ task, targetKm: km })} onViewDetail={(m) => handleOpenMilestoneDetail(m)} />
             </div>
+
+            {checkedTaskIds.length > 0 && (
+              <div className="pt-4 shrink-0">
+                <button
+                  onClick={handleRegisterFromChecklist}
+                  className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <PenTool size={18} /> Registrar Serviços ({checkedTaskIds.length})
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -2053,176 +1773,41 @@ const App: React.FC = () => {
           isSightingValidated={isSightingValidated}
         />
 
-        {activeRecoveryAlert && (
-          <div className="fixed inset-0 z-[450] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md animate-in zoom-in-95">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] p-8 shadow-2xl border-4 border-emerald-500 text-center space-y-6">
-              <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/30 rounded-full mx-auto flex items-center justify-center">
-                <PartyPopper size={40} className="text-emerald-600" />
-              </div>
-              <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase">Excelente Notícia!</h3>
-              <p className="text-xs text-slate-500 leading-relaxed font-medium">O veículo <strong>{activeRecoveryAlert.vehicle.brand} {activeRecoveryAlert.vehicle.model}</strong> foi recuperado com sucesso e o alerta de roubo foi desativado na comunidade.</p>
-              <button onClick={() => setActiveRecoveryAlert(null)} className="w-full bg-emerald-600 text-white py-5 rounded-[24px] font-black uppercase text-xs shadow-xl active:scale-95">Continuar</button>
-            </div>
-          </div>
-        )}
+        <RecoverySuccessModal
+          report={activeRecoveryAlert}
+          onClose={() => setActiveRecoveryAlert(null)}
+        />
 
-        {selectedMilestoneDetail && (
-          <div className="fixed inset-0 z-[190] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-6 shadow-2xl space-y-4 animate-in zoom-in-95 max-h-[85vh] flex flex-col">
-              <div className="flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10 shrink-0">
-                <div className="flex flex-col">
-                  <h3 className="font-bold text-slate-800 dark:text-white">Checklist {selectedMilestoneDetail.km.toLocaleString()} km</h3>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Selecione os serviços realizados</p>
-                </div>
-                <button onClick={() => setSelectedMilestoneDetail(null)} className="p-1 text-slate-400"><X size={20} /></button>
-              </div>
+        <MilestoneDetailModal
+          milestone={selectedMilestoneDetail}
+          checkedTaskIds={checkedTaskIds}
+          onToggleTask={toggleTaskChecked}
+          onClose={() => setSelectedMilestoneDetail(null)}
+          onSave={handleRegisterFromChecklist}
+          isSaving={false}
+          onFileSelect={handleInvoiceScan}
+          selectedFile={null}
+          isCapturing={isScanning}
+        />
 
-              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                {selectedMilestoneDetail.tasks.map((task) => {
-                  const isChecked = checkedTaskIds.includes(task.id);
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => toggleTaskChecked(task.id)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-4 ${isChecked ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-800' : 'bg-slate-50 border-slate-100 dark:bg-slate-800 dark:border-slate-800'}`}
-                    >
-                      <div className={`mt-0.5 shrink-0 ${isChecked ? 'text-indigo-600' : 'text-slate-300'}`}>
-                        {isChecked ? <CheckSquare size={24} /> : <Square size={24} />}
-                      </div>
-                      <div className="flex-1">
-                        <p className={`text-sm font-bold ${isChecked ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-white'}`}>{task.title}</p>
-                        <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">{task.description}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+        <ServiceRegistrationModal
+          task={taskToComplete}
+          onClose={() => setTaskToComplete(null)}
+          onSubmit={saveServiceRecord}
+          isScanning={isScanning}
+          onInvoiceScan={handleInvoiceScan}
+        />
 
-              <div className="pt-4 shrink-0">
-                <button
-                  onClick={handleRegisterFromChecklist}
-                  className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                  <PenTool size={18} /> Registrar Serviços ({checkedTaskIds.length})
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <VehicleDeletionModal
+          isOpen={!!vehicleToDeleteId}
+          onClose={() => setVehicleToDeleteId(null)}
+          onConfirm={confirmDeleteVehicle}
+        />
 
-        {taskToComplete && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                  <PenTool size={20} className="text-indigo-600" /> Registro de Serviço
-                </h3>
-                <button onClick={() => setTaskToComplete(null)} className="p-1 text-slate-400"><X size={20} /></button>
-              </div>
-              <form onSubmit={saveServiceRecord} className="space-y-3">
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Serviços Selecionados</p>
-                  <p className="text-xs font-bold text-slate-700 dark:text-indigo-300 leading-snug">{taskToComplete.task.title}</p>
-                </div>
-                <input type="hidden" name="taskTitle" value={taskToComplete.task.title} />
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">KM Rodado</p>
-                    <input required name="mileage" id="record-mileage" type="number" inputMode="numeric" defaultValue={taskToComplete.targetKm} placeholder="Ex: 10000" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data</p>
-                    <input required name="date" id="record-date" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
-                  </div>
-                </div>
-
-                <div className="relative group">
-                  <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent" />
-                  <div className="py-2">
-                    <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest text-center mb-2">Poupe tempo com o Scanner IA</p>
-                    <label className={`flex flex-col items-center justify-center w-full h-14 border-2 border-dashed rounded-2xl transition-all ${isScanning ? 'bg-indigo-50 animate-pulse border-indigo-300 pointer-events-none' : 'bg-indigo-50/30 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30 cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20'}`}>
-                      <div className="flex items-center gap-2">
-                        {isScanning ? (
-                          <>
-                            <Loader2 size={16} className="text-indigo-600 animate-spin" />
-                            <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-tight">Processando Nota...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Zap size={16} className="text-indigo-600 animate-pulse" />
-                            <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-tight">Escanear Nota Fiscal</span>
-                          </>
-                        )}
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        onChange={(e) => handleInvoiceScan(e)}
-                        disabled={isScanning}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor Total (R$)</p>
-                  <input required name="cost" id="record-cost" type="number" step="0.01" inputMode="decimal" placeholder="Ex: 450.00" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Detalhes (Opcional)</p>
-                  <textarea name="notes" placeholder="Descreva as peças e oficina..." className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white h-20 resize-none" />
-                </div>
-                <button type="submit" className="w-full bg-indigo-600 py-4 rounded-2xl font-bold text-white shadow-lg active:scale-95 transition-all text-xs uppercase tracking-widest">Finalizar Registro</button>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {vehicleToDeleteId && (
-          <div className="fixed inset-0 z-[250] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-8 shadow-2xl text-center space-y-5 animate-in zoom-in-95">
-              <AlertTriangle size={40} className="text-red-600 mx-auto" />
-              <h3 className="text-lg font-black dark:text-white uppercase">Excluir Veículo?</h3>
-              <p className="text-xs text-slate-500">Esta ação apagará todo o histórico do veículo permanentemente.</p>
-              <div className="flex flex-col gap-3">
-                <button onClick={confirmDeleteVehicle} className="w-full bg-red-600 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95">Confirmar Exclusão</button>
-                <button onClick={() => setVehicleToDeleteId(null)} className="w-full py-4 text-slate-500 font-bold active:scale-95">Cancelar</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {newSightingAlert && (
-          <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md animate-in zoom-in-95">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] p-8 shadow-2xl border-4 border-indigo-500 text-center space-y-6">
-              <MapPinned size={40} className="text-indigo-600 mx-auto" />
-              <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase">Veículo Localizado!</h3>
-              <p className="text-xs text-slate-500">
-                {newSightingAlert.mapUrl
-                  ? "Localização GPS enviada pela comunidade agora."
-                  : "Um membro da comunidade informou a localização manualmente."}
-              </p>
-              {newSightingAlert.mapUrl && (
-                <a
-                  href={newSightingAlert.mapUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black block uppercase text-xs shadow-xl active:scale-95"
-                >
-                  Abrir no Google Maps
-                </a>
-              )}
-              <button
-                onClick={() => setNewSightingAlert(null)}
-                className="w-full py-2 text-slate-400 font-bold text-[10px] uppercase hover:text-slate-600 transition-colors"
-              >
-                Fechar Notificação
-              </button>
-            </div>
-          </div>
-        )}
+        <SightingSuccessModal
+          sighting={newSightingAlert}
+          onClose={() => setNewSightingAlert(null)}
+        />
 
         <TheftReportModal
           isOpen={!!reportingTheftVehicleId}
@@ -2232,237 +1817,50 @@ const App: React.FC = () => {
           onSubmit={handleTheftReportSubmit}
         />
 
-        {vehicleToRecoverId && (
-          <div className="fixed inset-0 z-[250] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-8 shadow-2xl text-center space-y-5 animate-in zoom-in-95">
-              <Trophy size={40} className="text-emerald-600 mx-auto" />
-              <h3 className="text-lg font-black dark:text-white uppercase">Confirmar Recuperação?</h3>
-              <p className="text-xs text-slate-500">Isso removerá o alerta de roubo da comunidade e limpará o histórico de avistamentos.</p>
-              <div className="flex flex-col gap-3">
-                <button onClick={confirmRecovery} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95">Sim, foi recuperado!</button>
-                <button onClick={() => setVehicleToRecoverId(null)} className="w-full py-4 text-slate-500 font-bold active:scale-95">Cancelar</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* CHATBOT IA */}
-        <ChatBot
-          vehicle={selectedVehicle}
-          userPlan={userPlan}
-          questionsRemaining={aiQuestionsRemaining}
-          onMessageSent={handleChatMessageSent}
-          onUpgrade={() => setShowSubscriptionModal(true)}
-          isOpen={isChatOpen}
-          onClose={() => setIsChatOpen(false)}
+        <RecoveryConfirmationModal
+          isOpen={!!vehicleToRecoverId}
+          onClose={() => setVehicleToRecoverId(null)}
+          onConfirm={confirmRecovery}
         />
 
-        {/* MODAL EXPLICAÇÃO SAÚDE DO VEÍCULO */}
-        {showHealthExplanation && (
-          <div className="fixed inset-0 z-[2100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] p-8 shadow-2xl space-y-6 animate-in zoom-in-95 text-center">
-              <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/30 rounded-full mx-auto flex items-center justify-center">
-                <Activity size={40} className="text-indigo-600" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">O que é a Saúde?</h3>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Entenda como calculamos este índice</p>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 text-left space-y-4">
-                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                  A <strong>IA da AutoCare</strong> analisa diversos fatores para chegar a este percentual:
-                </p>
-                <ul className="space-y-3 text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  <li className="flex items-start gap-3">
-                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                    <span><strong>Quilometragem:</strong> Comparação com o plano de manutenção do fabricante.</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                    <span><strong>Histórico:</strong> Se os serviços preventivos estão sendo registrados em dia.</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                    <span><span><strong>Idade:</strong> O desgaste natural de componentes por tempo.</span></span>
-                  </li>
-                </ul>
-              </div>
-              <button
-                onClick={() => setShowHealthExplanation(false)}
-                className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black uppercase text-xs tracking-widest shadow-xl active:scale-95"
-              >
-                Entendi
-              </button>
-            </div>
-          </div>
-        )}
+        <HealthExplanationModal
+          isOpen={showHealthExplanation}
+          onClose={() => setShowHealthExplanation(false)}
+        />
 
-        {/* MODAL CONFIRMAÇÃO EXCLUSÃO DE CONTA */}
-        {showDeleteAccountConfirm && (
-          <div className="fixed inset-0 z-[2200] flex items-center justify-center p-6 bg-red-600/10 backdrop-blur-md animate-in fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] p-8 shadow-2xl border-4 border-red-100 dark:border-red-900/30 text-center space-y-6 animate-in zoom-in-95">
-              <div className="w-20 h-20 bg-red-50 dark:bg-red-900/30 rounded-full mx-auto flex items-center justify-center">
-                <Trash2 size={40} className="text-red-600" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black text-red-600 uppercase tracking-tight">Excluir Conta?</h3>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Esta ação é irreversível</p>
-              </div>
-              <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                Ao excluir sua conta, todos os veículos, históricos de manutenção e configurações serão apagados permanentemente de nossos servidores.
-              </p>
-              <div className="space-y-3 pt-2">
-                <button
-                  onClick={handleDeleteAccount}
-                  disabled={isDeletingAccount}
-                  className="w-full bg-red-600 text-white py-5 rounded-[24px] font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isDeletingAccount ? <Loader2 size={18} className="animate-spin" /> : "Sim, Excluir Tudo"}
-                </button>
-                <button
-                  onClick={() => setShowDeleteAccountConfirm(false)}
-                  disabled={isDeletingAccount}
-                  className="w-full py-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest"
-                >
-                  Cancelar e Manter Dados
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {showFuelModal && (
-          <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 uppercase text-sm tracking-tight">
-                  <Activity size={20} className="text-emerald-600" /> Registro de Abastecimento
-                </h3>
-                <button onClick={() => setShowFuelModal(false)} className="p-1 text-slate-400"><X size={20} /></button>
-              </div>
-              <form onSubmit={handleFuelSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">KM Atual</p>
-                    <input required name="mileage" type="number" inputMode="numeric" defaultValue={selectedVehicle?.currentMileage} placeholder="Ex: 10500" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Litros</p>
-                    <input required name="liters" type="number" step="0.01" inputMode="decimal" placeholder="Ex: 45.5" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor Total (R$)</p>
-                    <input required name="cost" type="number" step="0.01" inputMode="decimal" placeholder="Ex: 250.00" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data</p>
-                    <input required name="date" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipo de Combustível</p>
-                  <select name="fuelType" defaultValue={selectedVehicle?.fuel} className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white">
-                    {FUEL_TYPES.map(f => <option key={f} value={f}>{f}</option>)}
-                  </select>
-                </div>
-                <input type="hidden" name="isFullTank" value="on" />
-                <button type="submit" className="w-full bg-emerald-600 py-4 rounded-2xl font-bold text-white shadow-lg active:scale-95 transition-all text-xs uppercase tracking-widest">Salvar Abastecimento</button>
-              </form>
-            </div>
-          </div>
-        )}
+        <AccountDeletionModal
+          isOpen={showDeleteAccountConfirm}
+          isDeleting={isDeletingAccount}
+          onConfirm={handleDeleteAccount}
+          onClose={() => setShowDeleteAccountConfirm(false)}
+        />
 
-        {/* MODAL DICAS DE CONSUMO IA */}
-        {showFuelAdviceModal && aiFuelAdvice?.tips && (
-          <div className="fixed inset-0 z-[2300] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="bg-indigo-100 dark:bg-indigo-500/20 p-2 rounded-2xl text-indigo-600 dark:text-indigo-400">
-                    <Activity size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Dicas de Consumo</h3>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Personalizadas para seu veículo</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowFuelAdviceModal(false)} className="p-2 text-slate-400 bg-slate-100 dark:bg-white/5 rounded-full"><X size={20} /></button>
-              </div>
+        <FuelRegistrationModal
+          isOpen={showFuelModal}
+          costInput={fuelCostInput}
+          onCostChange={handleFuelCostChange}
+          onClose={() => { setShowFuelModal(false); setFuelCostInput(''); }}
+          onSubmit={handleFuelSubmit}
+          defaultMileage={selectedVehicle?.currentMileage}
+          defaultFuelType={selectedVehicle?.fuel}
+        />
 
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {aiFuelAdvice.tips.map((tip: string, idx: number) => (
-                  <div key={idx} className="flex gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl border border-slate-100 dark:border-white/5">
-                    <div className="shrink-0 w-1.5 bg-indigo-400 rounded-full" />
-                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{tip}</p>
-                  </div>
-                ))}
-              </div>
+        <FuelAdviceModal
+          isOpen={showFuelAdviceModal}
+          onClose={() => setShowFuelAdviceModal(false)}
+          tips={aiFuelAdvice?.tips || []}
+        />
 
-              <button
-                onClick={() => setShowFuelAdviceModal(false)}
-                className="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-5 rounded-[24px] font-black uppercase text-xs tracking-widest shadow-xl active:scale-95"
-              >
-                Entendido
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* MODAL DE VISUALIZAÇÃO DE COMPROVANTE (PORTA-LUVAS DIGITAL) */}
-        {showReceiptModal && selectedReceiptUrl && (
-          <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in">
-            <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-              <div className="absolute top-4 right-4 z-10">
-                <button
-                  onClick={() => {
-                    setShowReceiptModal(false);
-                    setSelectedReceiptUrl(null);
-                  }}
-                  className="p-3 bg-slate-900/50 hover:bg-slate-900 text-white rounded-full backdrop-blur-md transition-all active:scale-90"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
-                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600">
-                  <FileText size={20} />
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-800 dark:text-white uppercase text-sm tracking-tight">Comprovante Digital</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Visualização do documento original</p>
-                </div>
-              </div>
-
-              <div className="aspect-[3/4] sm:aspect-auto sm:h-[70vh] w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center overflow-auto p-4">
-                <img
-                  src={selectedReceiptUrl}
-                  alt="Comprovante de Serviço"
-                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x600?text=Erro+ao+carregar+imagem';
-                  }}
-                />
-              </div>
-
-              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-center">
-                <button
-                  onClick={() => {
-                    setShowReceiptModal(false);
-                    setSelectedReceiptUrl(null);
-                  }}
-                  className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 shadow-lg"
-                >
-                  Fechar Galeria
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
-    </Layout>
+        <ReceiptViewModal
+          isOpen={showReceiptModal}
+          url={selectedReceiptUrl}
+          onClose={() => {
+            setShowReceiptModal(false);
+            setSelectedReceiptUrl(null);
+          }}
+        />
+      </div >
+    </Layout >
   );
 };
 

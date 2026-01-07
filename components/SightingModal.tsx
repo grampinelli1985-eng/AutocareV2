@@ -12,7 +12,7 @@ interface SightingModalProps {
     isSightingValidated: boolean;
 }
 
-const SightingModal: React.FC<SightingModalProps> = ({
+export const SightingModal: React.FC<SightingModalProps> = ({
     isOpen,
     onClose,
     onSubmit,
