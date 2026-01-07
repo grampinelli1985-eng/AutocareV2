@@ -11,7 +11,7 @@ import AddVehicleModal from './components/AddVehicleModal';
 import SightingModal from './components/SightingModal';
 import TheftReportModal from './components/TheftReportModal';
 import { Vehicle, MaintenanceTask, ServiceRecord, TheftReport, MaintenanceMilestone, MaintenancePriority, TheftSighting, FuelLog } from './types';
-import { getSmartMaintenanceAdvice, getFuelEconomyAdvice } from './services/geminiService';
+import { getSmartMaintenanceAdvice, getFuelEconomyAdvice, analyzeInvoice } from './services/geminiService';
 import { findManualForVehicle } from './maintenanceData';
 import { BRANDS, FUEL_TYPES, TRANSMISSIONS, MODELS_BY_BRAND, COMMON_ENGINES, DEFAULT_MAINTENANCE_PLAN } from './constants';
 import { supabase } from './services/supabase';
@@ -100,6 +100,9 @@ const App: React.FC = () => {
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [showFuelAdviceModal, setShowFuelAdviceModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedReceiptUrl, setSelectedReceiptUrl] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   // Alertas e Recuperação
   const [reportingTheftVehicleId, setReportingTheftVehicleId] = useState<string | null>(null);
@@ -1062,6 +1065,57 @@ const App: React.FC = () => {
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64String = reader.result?.toString().split(',')[1] || '';
+        resolve(base64String);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleInvoiceScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (userPlan === 'free') {
+      setShowSubscriptionModal(true);
+      return;
+    }
+
+    try {
+      setIsScanning(true);
+      const base64 = await fileToBase64(file);
+      const extractedData = await analyzeInvoice(base64);
+
+      if (extractedData) {
+        // Preencher os campos do formulário se a IA encontrou os dados
+        const costInput = document.getElementById('record-cost') as HTMLInputElement;
+        const dateInput = document.getElementById('record-date') as HTMLInputElement;
+        const notesTextarea = document.querySelector('textarea[name="notes"]') as HTMLTextAreaElement;
+
+        if (extractedData.cost && costInput) costInput.value = extractedData.cost.toString();
+        if (extractedData.date && dateInput) dateInput.value = extractedData.date;
+        if (extractedData.notes && notesTextarea) notesTextarea.value = extractedData.notes;
+
+        // Feedback visual
+        addNotification({
+          type: 'info',
+          title: 'Scanner IA Concluído',
+          message: 'Dados extraídos da nota fiscal e preenchidos no formulário.'
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao escanear nota:', error);
+      alert('Não foi possível ler esta nota automaticamente. Por favor, preencha os campos manualmente.');
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   const saveServiceRecord = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -1429,8 +1483,19 @@ const App: React.FC = () => {
                               <p className="text-lg font-black text-slate-800 uppercase tracking-tight">{record.taskTitle}</p>
                               <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mt-1">Realizado em {new Date(record.date).toLocaleDateString('pt-BR')} • {record.mileage.toLocaleString()} KM</p>
                             </div>
-                            <div className="text-right bg-indigo-50 px-4 py-2 rounded-xl">
+                            <div className="text-right flex flex-col items-end gap-2">
                               <p className="text-sm font-black text-indigo-700 tracking-tight">R$ {record.cost.toFixed(2)}</p>
+                              {record.receiptUrl && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedReceiptUrl(record.receiptUrl!);
+                                    setShowReceiptModal(true);
+                                  }}
+                                  className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-colors"
+                                >
+                                  <Eye size={12} /> Ver Nota
+                                </button>
+                              )}
                             </div>
                           </div>
 
@@ -2063,16 +2128,47 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">KM Rodado</p>
-                    <input required name="mileage" type="number" inputMode="numeric" defaultValue={taskToComplete.targetKm} placeholder="Ex: 10000" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
+                    <input required name="mileage" id="record-mileage" type="number" inputMode="numeric" defaultValue={taskToComplete.targetKm} placeholder="Ex: 10000" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
                   </div>
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data</p>
-                    <input required name="date" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
+                    <input required name="date" id="record-date" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white" />
                   </div>
                 </div>
+
+                <div className="relative group">
+                  <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent" />
+                  <div className="py-2">
+                    <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest text-center mb-2">Poupe tempo com o Scanner IA</p>
+                    <label className={`flex flex-col items-center justify-center w-full h-14 border-2 border-dashed rounded-2xl transition-all ${isScanning ? 'bg-indigo-50 animate-pulse border-indigo-300 pointer-events-none' : 'bg-indigo-50/30 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30 cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20'}`}>
+                      <div className="flex items-center gap-2">
+                        {isScanning ? (
+                          <>
+                            <Loader2 size={16} className="text-indigo-600 animate-spin" />
+                            <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-tight">Processando Nota...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap size={16} className="text-indigo-600 animate-pulse" />
+                            <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-tight">Escanear Nota Fiscal</span>
+                          </>
+                        )}
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) => handleInvoiceScan(e)}
+                        disabled={isScanning}
+                      />
+                    </label>
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor Total (R$)</p>
-                  <input required name="cost" type="number" step="0.01" inputMode="decimal" placeholder="Ex: 450.00" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
+                  <input required name="cost" id="record-cost" type="number" step="0.01" inputMode="decimal" placeholder="Ex: 450.00" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white font-bold" />
                 </div>
                 <div className="space-y-1">
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Detalhes (Opcional)</p>
@@ -2309,6 +2405,58 @@ const App: React.FC = () => {
               >
                 Entendido
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DE VISUALIZAÇÃO DE COMPROVANTE (PORTA-LUVAS DIGITAL) */}
+        {showReceiptModal && selectedReceiptUrl && (
+          <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in">
+            <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="absolute top-4 right-4 z-10">
+                <button
+                  onClick={() => {
+                    setShowReceiptModal(false);
+                    setSelectedReceiptUrl(null);
+                  }}
+                  className="p-3 bg-slate-900/50 hover:bg-slate-900 text-white rounded-full backdrop-blur-md transition-all active:scale-90"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
+                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-800 dark:text-white uppercase text-sm tracking-tight">Comprovante Digital</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Visualização do documento original</p>
+                </div>
+              </div>
+
+              <div className="aspect-[3/4] sm:aspect-auto sm:h-[70vh] w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center overflow-auto p-4">
+                <img
+                  src={selectedReceiptUrl}
+                  alt="Comprovante de Serviço"
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x600?text=Erro+ao+carregar+imagem';
+                  }}
+                />
+              </div>
+
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-center">
+                <button
+                  onClick={() => {
+                    setShowReceiptModal(false);
+                    setSelectedReceiptUrl(null);
+                  }}
+                  className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 shadow-lg"
+                >
+                  Fechar Galeria
+                </button>
+              </div>
             </div>
           </div>
         )}

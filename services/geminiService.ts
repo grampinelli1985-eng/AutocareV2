@@ -156,3 +156,41 @@ export async function getFuelEconomyAdvice(vehicle: Vehicle, averageKmL: string 
     return null;
   }
 }
+export const analyzeInvoice = async (base64Image: string) => {
+  try {
+    const prompt = `Você é um assistente especialista em manutenção automotiva. 
+    Analise esta imagem de uma nota fiscal ou recibo de oficina e extraia as seguintes informações em formato JSON:
+    {
+      "cost": número (valor total),
+      "date": "YYYY-MM-DD",
+      "notes": "texto descrevendo as peças e serviços detalhadamente"
+    }
+    Se não encontrar alguma informação, preencha com o que for possível. Retorne APENAS o JSON.`;
+
+    const result = await genAI.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                data: base64Image,
+                mimeType: "image/jpeg"
+              }
+            }
+          ]
+        }
+      ]
+    });
+
+    const response = result;
+    const text = response.text || "";
+    const jsonString = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error('Error analyzing invoice:', error);
+    throw error;
+  }
+};
