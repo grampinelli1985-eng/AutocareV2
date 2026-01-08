@@ -185,7 +185,7 @@ const App: React.FC = () => {
     for (let km = 10000; km <= maxKm; km += 10000) {
       const milestoneRecords = records.filter(r =>
         r.vehicleId === selectedVehicle.id &&
-        r.mileage >= km - 2000 && r.mileage <= km + 2000
+        r.mileage >= km - 5000 && r.mileage <= km + 5000
       );
 
       const tasksForMilestone: MaintenanceTask[] = plan.filter(p => km % p.intervalKm === 0).map((p, idx) => ({
