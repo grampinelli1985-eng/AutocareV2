@@ -11,6 +11,7 @@ import { AddVehicleModal } from './components/AddVehicleModal';
 import { TheftReportModal } from './components/TheftReportModal';
 import { SightingModal } from './components/SightingModal';
 import { MilestoneDetailModal } from './components/MilestoneDetailModal';
+import { MilestoneCompletionModal } from './components/MilestoneCompletionModal';
 import { RecoverySuccessModal } from './components/RecoverySuccessModal';
 import { ServiceRegistrationModal } from './components/ServiceRegistrationModal';
 import { VehicleDeletionModal } from './components/VehicleDeletionModal';
@@ -117,6 +118,7 @@ const App: React.FC = () => {
   const [selectedBrandInModal, setSelectedBrandInModal] = useState<string>('');
   const [showFuelModal, setShowFuelModal] = useState(false);
   const [selectedMilestoneDetail, setSelectedMilestoneDetail] = useState<MaintenanceMilestone | null>(null);
+  const [selectedCompletedMilestone, setSelectedCompletedMilestone] = useState<MaintenanceMilestone | null>(null);
   const [vehicleToDeleteId, setVehicleToDeleteId] = useState<string | null>(null);
   const [showHealthExplanation, setShowHealthExplanation] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
@@ -211,7 +213,8 @@ const App: React.FC = () => {
         label: `${km / 1000}k`,
         isWarranty,
         tasks: tasksForMilestone,
-        status
+        status,
+        records: milestoneRecords
       });
     }
     return result;
@@ -1292,8 +1295,30 @@ const App: React.FC = () => {
   };
 
   const handleOpenMilestoneDetail = (m: MaintenanceMilestone) => {
-    setSelectedMilestoneDetail(m);
-    setCheckedTaskIds(m.tasks.map(t => t.id));
+    if (m.status === 'done') {
+      setSelectedCompletedMilestone(m);
+    } else {
+      setSelectedMilestoneDetail(m);
+      setCheckedTaskIds(m.tasks.map(t => t.id));
+    }
+  };
+
+  const handleEditMilestoneRecord = (m: MaintenanceMilestone) => {
+    if (!m.records || m.records.length === 0) return;
+    const record = m.records[0];
+
+    setTaskToComplete({
+      task: {
+        id: record.id,
+        title: record.taskTitle,
+        description: record.notes,
+        intervalKm: 0,
+        intervalMonths: 0,
+        priority: MaintenancePriority.MEDIUM,
+      },
+      targetKm: m.km
+    });
+    // Aqui poderíamos adicionar lógica para preencher o formulário com dados existentes se necessário
   };
 
   const handleFuelCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1615,17 +1640,6 @@ const App: React.FC = () => {
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 shadow-sm border border-slate-100 dark:border-slate-800">
               <MaintenanceTimeline milestones={milestones} onCompleteTask={(task, km) => setTaskToComplete({ task, targetKm: km })} onViewDetail={(m) => handleOpenMilestoneDetail(m)} />
-
-              {checkedTaskIds.length > 0 && (
-                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
-                  <button
-                    onClick={handleRegisterFromChecklist}
-                    className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
-                  >
-                    <PenTool size={18} /> Registrar Serviços ({checkedTaskIds.length})
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -1840,6 +1854,12 @@ const App: React.FC = () => {
           isCapturing={isScanning}
           userPlan={userPlan}
           onUnlockPremium={() => setShowSubscriptionModal(true)}
+        />
+
+        <MilestoneCompletionModal
+          milestone={selectedCompletedMilestone}
+          onClose={() => setSelectedCompletedMilestone(null)}
+          onEdit={handleEditMilestoneRecord}
         />
 
         <ServiceRegistrationModal

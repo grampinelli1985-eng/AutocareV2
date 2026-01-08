@@ -30,6 +30,7 @@ export interface MaintenanceMilestone {
   isWarranty: boolean;
   tasks: MaintenanceTask[];
   status: 'done' | 'pending' | 'overdue' | 'upcoming';
+  records?: ServiceRecord[];
 }
 
 export interface VehicleManualPlan {
