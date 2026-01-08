@@ -169,7 +169,7 @@ export const analyzeInvoice = async (base64Image: string, mimeType: string = "im
     DIRETRIZ IMPORTANTE: Retorne APENAS o objeto JSON puro, sem blocos de código markdown ou texto explicativo.`;
 
     const result = await genAI.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       contents: [
         {
           role: "user",
