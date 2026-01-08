@@ -156,7 +156,7 @@ export async function getFuelEconomyAdvice(vehicle: Vehicle, averageKmL: string 
     return null;
   }
 }
-export const analyzeInvoice = async (base64Image: string) => {
+export const analyzeInvoice = async (base64Image: string, mimeType: string = "image/jpeg") => {
   try {
     const prompt = `Você é um assistente especialista em manutenção automotiva. 
     Analise esta imagem de uma nota fiscal ou recibo de oficina e extraia as seguintes informações em formato JSON:
@@ -165,7 +165,8 @@ export const analyzeInvoice = async (base64Image: string) => {
       "date": "YYYY-MM-DD",
       "notes": "texto descrevendo as peças e serviços detalhadamente"
     }
-    Se não encontrar alguma informação, preencha com o que for possível. Retorne APENAS o JSON.`;
+    Se não encontrar alguma informação, preencha com o que for possível.
+    DIRETRIZ IMPORTANTE: Retorne APENAS o objeto JSON puro, sem blocos de código markdown ou texto explicativo.`;
 
     const result = await genAI.models.generateContent({
       model: "gemini-1.5-flash",
@@ -177,7 +178,7 @@ export const analyzeInvoice = async (base64Image: string) => {
             {
               inlineData: {
                 data: base64Image,
-                mimeType: "image/jpeg"
+                mimeType: mimeType
               }
             }
           ]
@@ -185,12 +186,23 @@ export const analyzeInvoice = async (base64Image: string) => {
       ]
     });
 
-    const response = result;
-    const text = response.text || "";
-    const jsonString = text.replace(/```json|```/g, "").trim();
+    const text = result.text || "";
+
+    // Improved JSON extraction
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+
+    if (jsonStart === -1 || jsonEnd === -1) {
+      console.error("No JSON found in response:", text);
+      throw new Error("Resposta da IA não contém dados válidos.");
+    }
+
+    const jsonString = text.substring(jsonStart, jsonEnd + 1);
     return JSON.parse(jsonString);
-  } catch (error) {
-    console.error('Error analyzing invoice:', error);
+  } catch (error: any) {
+    console.group('Gemini Analysis Error');
+    console.error('Error Description:', error?.message || 'Unknown');
+    console.groupEnd();
     throw error;
   }
 };

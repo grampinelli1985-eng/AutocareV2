@@ -65,37 +65,67 @@ export const MilestoneDetailModal: React.FC<MilestoneDetailModalProps> = ({
                 </div>
 
                 <div className="shrink-0 space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <div className="relative group">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={onFileSelect}
-                            onClick={(e) => {
-                                if (userPlan === 'free') {
-                                    e.preventDefault();
-                                    onUnlockPremium();
-                                }
-                            }}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            disabled={isSaving || isCapturing}
-                        />
-                        <div className={`flex items-center gap-4 p-4 rounded-2xl border-2 border-dashed transition-all ${selectedFile ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-600'}`}>
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedFile ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                                {isCapturing ? <Loader2 size={24} className="animate-spin" /> : selectedFile ? <FileText size={24} /> : <Camera size={24} />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-black uppercase text-slate-800 dark:text-white truncate flex items-center gap-2">
-                                    {selectedFile ? selectedFile.name : 'Escanear Nota Fiscal'}
-                                    {userPlan === 'free' && <Crown size={12} className="text-amber-500 fill-amber-500" />}
-                                </p>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                                    {userPlan === 'free' ? 'Disponível no Premium' : selectedFile ? 'Comprovante pronto' : 'IA vai analisar os itens'}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="relative group">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={onFileSelect}
+                                onClick={(e) => {
+                                    if (userPlan === 'free') {
+                                        e.preventDefault();
+                                        onUnlockPremium();
+                                    }
+                                }}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                disabled={isSaving || isCapturing}
+                            />
+                            <div className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-dashed transition-all h-24 ${selectedFile ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-600'}`}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${selectedFile ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                    {isCapturing ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
+                                </div>
+                                <p className="text-[9px] font-black uppercase text-slate-800 dark:text-white text-center">
+                                    Escanear
+                                    {userPlan === 'free' && <Crown size={10} className="inline ml-1 text-amber-500 fill-amber-500" />}
                                 </p>
                             </div>
-                            {selectedFile && <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />}
+                        </div>
+
+                        <div className="relative group">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={onFileSelect}
+                                onClick={(e) => {
+                                    if (userPlan === 'free') {
+                                        e.preventDefault();
+                                        onUnlockPremium();
+                                    }
+                                }}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                disabled={isSaving || isCapturing}
+                            />
+                            <div className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-dashed transition-all h-24 ${selectedFile ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-600'}`}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${selectedFile ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                    <FileText size={20} />
+                                </div>
+                                <p className="text-[9px] font-black uppercase text-slate-800 dark:text-white text-center">
+                                    Upload
+                                    {userPlan === 'free' && <Crown size={10} className="inline ml-1 text-amber-500 fill-amber-500" />}
+                                </p>
+                            </div>
                         </div>
                     </div>
+
+                    {selectedFile && (
+                        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-xl flex items-center justify-between border border-emerald-100 dark:border-emerald-900/30">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                                <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 truncate">{selectedFile.name}</span>
+                            </div>
+                        </div>
+                    )}
 
                     <button
                         onClick={onSave}

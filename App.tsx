@@ -1155,13 +1155,13 @@ const App: React.FC = () => {
     }
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
+  const fileToBase64 = (file: File): Promise<{ base64: string; type: string }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
         const base64String = reader.result?.toString().split(',')[1] || '';
-        resolve(base64String);
+        resolve({ base64: base64String, type: file.type || 'image/jpeg' });
       };
       reader.onerror = (error) => reject(error);
     });
@@ -1180,8 +1180,8 @@ const App: React.FC = () => {
 
     try {
       setIsScanning(true);
-      const base64 = await fileToBase64(file);
-      const extractedData = await analyzeInvoice(base64);
+      const { base64, type } = await fileToBase64(file);
+      const extractedData = await analyzeInvoice(base64, type);
 
       if (extractedData) {
         // Preencher os campos do formulário se a IA encontrou os dados
@@ -1200,9 +1200,10 @@ const App: React.FC = () => {
           message: 'Dados extraídos da nota fiscal e preenchidos no formulário.'
         });
       }
-    } catch (error) {
-      console.error('Erro ao escanear nota:', error);
-      alert('Não foi possível ler esta nota automaticamente. Por favor, preencha os campos manualmente.');
+    } catch (error: any) {
+      console.error('Erro detalhado no scanner:', error);
+      const errorMessage = error?.message || 'Erro de conexão ou processamento';
+      alert(`Não foi possível ler esta nota automaticamente: ${errorMessage}. Por favor, preencha os campos manualmente.`);
     } finally {
       setIsScanning(false);
     }
