@@ -466,6 +466,33 @@ const App: React.FC = () => {
   }, [isLoggedIn, session]);
 
   useEffect(() => {
+    if (isLoggedIn && session?.user) {
+      const syncLocation = async () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            await supabase.from('profiles').update({
+              last_known_lat: latitude,
+              last_known_lng: longitude
+            }).eq('id', session.user.id);
+          }, null, { enableHighAccuracy: false, timeout: 10000 });
+        }
+      };
+      syncLocation();
+      const interval = setInterval(syncLocation, 1000 * 60 * 15); // Sync every 15 mins
+      return () => clearInterval(interval);
+    }
+  }, [isLoggedIn, session]);
+
+  useEffect(() => {
+    const platform = Capacitor.getPlatform();
+    if (isLoggedIn && session?.user && (platform === 'android' || platform === 'ios')) {
+      // Aqui poderíamos capturar o push_token (FCM/OneSignal) e salvar no profile
+      // await supabase.from('profiles').update({ push_token: token }).eq('id', session.user.id);
+    }
+  }, [isLoggedIn, session]);
+
+  useEffect(() => {
     if (selectedVehicle && isLoggedIn) {
       // Mileage-based caching to save tokens and prevent multiple AI calls
       const cached = radarCache[selectedVehicle.id];
@@ -965,53 +992,55 @@ const App: React.FC = () => {
       }
     }
 
-    const report: TheftReport = {
-      date: new Date().toISOString(),
-      state: fd.get('state') as string,
-      city: fd.get('city') as string,
-      neighborhood: fd.get('neighborhood') as string,
-      description: fd.get('description') as string,
-      declared: fd.get('declaration') === 'on',
-      latitude: lat,
-      longitude: lng,
-      reporterPlan: userPlan
-    };
-
-    const { error: theftError } = await supabase
-      .from('vehicles')
-      .update({
-        is_stolen: true,
-        theft_report: report,
-        sightings: [],
-        last_known_lat: lat,
-        last_known_lng: lng
-      })
-      .eq('id', reportingTheftVehicleId);
-
-    if (theftError) {
-      alert("Erro ao registrar roubo: " + theftError.message);
-      return;
-    }
-
-    setVehicles(prev => prev.map(v =>
-      v.id === reportingTheftVehicleId ? {
-        ...v,
-        isStolen: true,
-        theftReport: report,
-        sightings: [],
-        lastKnownLat: lat,
-        lastKnownLng: lng
-      } : v
-    ));
-
-    setReportingTheftVehicleId(null);
-    if (targetVehicle) {
-      setActiveCommunityAlert({ vehicle: targetVehicle, report: report });
-      addNotification({
-        type: 'theft',
-        title: 'Alerta de Roubo Ativo',
-        message: `O alerta de roubo para o seu ${targetVehicle.model} foi disparado para a comunidade.`
+    // Centralizamos a lógica de roubo no Backend (Edge Function)
+    // Isso garante validação segura do plano e cálculo preciso via PostGIS
+    try {
+      const { data, error } = await supabase.functions.invoke('theft-alert-v2', {
+        body: {
+          vehicleId: reportingTheftVehicleId,
+          latitude: lat,
+          longitude: lng,
+          description: fd.get('description') as string
+        }
       });
+
+      if (error) throw error;
+
+      // Atualizamos o estado local para refletir a mudança imediata
+      const report: TheftReport = {
+        date: new Date().toISOString(),
+        state: fd.get('state') as string,
+        city: fd.get('city') as string,
+        neighborhood: fd.get('neighborhood') as string,
+        description: fd.get('description') as string,
+        declared: fd.get('declaration') === 'on',
+        latitude: lat,
+        longitude: lng,
+        reporterPlan: userPlan
+      };
+
+      setVehicles(prev => prev.map(v =>
+        v.id === reportingTheftVehicleId ? {
+          ...v,
+          isStolen: true,
+          theftReport: report,
+          sightings: [],
+          lastKnownLat: lat,
+          lastKnownLng: lng
+        } : v
+      ));
+
+      setReportingTheftVehicleId(null);
+      if (targetVehicle) {
+        setActiveCommunityAlert({ vehicle: targetVehicle, report: report });
+        addNotification({
+          type: 'theft',
+          title: 'Alerta disparado!',
+          message: `O alerta de roubo para o seu ${targetVehicle.model} foi processado pelo servidor.`
+        });
+      }
+    } catch (err: any) {
+      alert("Erro ao processar alerta no servidor: " + (err.message || err));
     }
   };
 
@@ -1466,7 +1495,7 @@ const App: React.FC = () => {
                 vehicles[0]?.lastKnownLng || 0,
                 activeCommunityAlert.report.latitude,
                 activeCommunityAlert.report.longitude
-              ) <= 50
+              ) <= 100
           )) ? activeCommunityAlert : null}
           onClose={() => setActiveCommunityAlert(null)}
         />

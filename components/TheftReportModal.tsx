@@ -27,12 +27,12 @@ export const TheftReportModal: React.FC<TheftReportModalProps> = ({
                     <button onClick={onClose} className="p-1 text-slate-400"><X size={20} /></button>
                 </div>
                 <form onSubmit={onSubmit} className="space-y-4">
-                    <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 flex gap-3 items-start">
-                        <div className="bg-indigo-100 dark:bg-indigo-900/40 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 mt-0.5"><ShieldAlert size={14} /></div>
+                    <div className="bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800/50 flex gap-3 items-start animate-in slide-in-from-top-2">
+                        <div className="bg-indigo-100 dark:bg-indigo-900/40 p-1.5 rounded-lg text-indigo-700 dark:text-indigo-300 mt-0.5"><ShieldAlert size={14} /></div>
                         <div className="space-y-1">
-                            <p className="text-[11px] font-black text-indigo-700 uppercase">Divulgação de Localização</p>
-                            <p className="text-[10px] text-indigo-700 leading-tight">
-                                O AutoCare acessa sua localização para validar o raio de 50km de alcance dos alertas comunitários (Plano Free) e para marcar o ponto inicial da ocorrência no mapa.
+                            <p className="text-[11px] font-black text-indigo-700 dark:text-indigo-300 uppercase">Divulgação de Localização</p>
+                            <p className="text-[10px] text-indigo-700 dark:text-indigo-300/80 leading-tight">
+                                O AutoCare acessa sua localização para validar o raio de 100km de alcance dos alertas comunitários (Plano Free) e para marcar o ponto inicial da ocorrência no mapa.
                             </p>
                         </div>
                     </div>
@@ -40,7 +40,7 @@ export const TheftReportModal: React.FC<TheftReportModalProps> = ({
                     {userPlan === 'free' && (
                         <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-100 flex gap-3 items-start animate-in slide-in-from-top-2">
                             <div className="bg-amber-100 dark:bg-amber-900/40 p-1.5 rounded-lg text-amber-700 dark:text-amber-400 mt-0.5"><Sparkles size={14} /></div>
-                            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 leading-tight">Usuários do plano Free emitem alertas em um raio de 50 km. Para alcance nacional, ative o plano Premium.</p>
+                            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 leading-tight">Usuários do plano Free emitem alertas em um raio de 100 km. Para alcance nacional, ative o plano Premium.</p>
                         </div>
                     )}
                     <select required name="state" className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm">
