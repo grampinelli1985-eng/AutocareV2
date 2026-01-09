@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Car as CarIcon, X, Loader2, Info, ChevronDown } from 'lucide-react';
-import { FUEL_TYPES, TRANSMISSIONS, COMMON_ENGINES, MODELS_BY_BRAND } from '../constants';
+import { FUEL_TYPES, TRANSMISSIONS, COMMON_ENGINES, MODELS_BY_BRAND, BRANDS } from '../constants';
 import { Vehicle } from '../types';
 import { getFipeBrands, getFipeModels, getFipeYears } from '../services/fipeService';
 
@@ -45,7 +45,12 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
         if (isOpen) {
             setIsLoadingBrands(true);
             getFipeBrands().then(data => {
-                setBrands(data.sort((a, b) => a.nome.localeCompare(b.nome)));
+                // Filtrar apenas as marcas que temos em nossa lista de "mais conhecidas" em constants.tsx
+                const filtered = data.filter(fipeBrand =>
+                    BRANDS.some(b => fipeBrand.nome.toLowerCase().includes(b.toLowerCase()) || b.toLowerCase().includes(fipeBrand.nome.toLowerCase()))
+                );
+
+                setBrands(filtered.sort((a, b) => a.nome.localeCompare(b.nome)));
                 setIsLoadingBrands(false);
 
                 // Se estiver editando, tentar encontrar o código da marca
@@ -88,6 +93,16 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
             setYears([]);
         }
     }, [selectedFipeModel, selectedFipeBrand]);
+
+    // Helper to find generic models even if the brand name from FIPE is slightly different (e.g. "VW - VolksWagen")
+    const getGenericModels = () => {
+        if (!selectedBrandInModal) return [];
+        const normalizedBrand = selectedBrandInModal.toLowerCase();
+        const brandKey = Object.keys(MODELS_BY_BRAND).find(k =>
+            normalizedBrand.includes(k.toLowerCase()) || k.toLowerCase().includes(normalizedBrand)
+        );
+        return brandKey ? MODELS_BY_BRAND[brandKey] : [];
+    };
 
     if (!isOpen) return null;
 
@@ -167,7 +182,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                                             className="w-full bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-4 text-sm dark:text-white outline-none border border-slate-100 dark:border-slate-800 focus:border-indigo-500 appearance-none transition-all"
                                         >
                                             <option value="">Modelo</option>
-                                            {(MODELS_BY_BRAND[selectedBrandInModal] || []).map(m => <option key={m} value={m}>{m}</option>)}
+                                            {getGenericModels().map(m => <option key={m} value={m}>{m}</option>)}
                                             <option value="Outro">Outro</option>
                                         </select>
                                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">

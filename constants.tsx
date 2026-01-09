@@ -2,20 +2,32 @@
 import { MaintenancePriority, MaintenanceTask } from './types';
 
 export const BRANDS = [
-  'Volkswagen', 'Fiat', 'Chevrolet', 'Toyota', 'Honda', 'Peugeot', 'Renault', 'Ford', 'Hyundai', 'Jeep'
+  'VW - VolksWagen', 'Fiat', 'GM - Chevrolet', 'Toyota', 'Honda', 'Peugeot', 'Renault', 'Ford', 'Hyundai', 'Jeep',
+  'Citroën', 'Nissan', 'Mitsubishi', 'Audi', 'BMW', 'Mercedes-Benz', 'Volvo', 'Caoa Chery', 'Kia Motors', 'BYD', 'GWM'
 ];
 
 export const MODELS_BY_BRAND: Record<string, string[]> = {
-  'Volkswagen': ['Gol', 'Polo', 'Golf', 'T-Cross', 'Nivus', 'Jetta', 'Saveiro', 'Virtus', 'Amarok', 'Voyage'],
-  'Fiat': ['Uno', 'Palio', 'Argo', 'Cronos', 'Mobi', 'Toro', 'Strada', 'Pulse', 'Fastback', 'Siena'],
-  'Chevrolet': ['Onix', 'Prisma', 'Tracker', 'Cruze', 'S10', 'Spin', 'Montana', 'Equinox', 'Celta'],
-  'Toyota': ['Corolla', 'Etios', 'Yaris', 'Hilux', 'SW4', 'Corolla Cross', 'Rav4'],
+  'VW - VolksWagen': ['Gol', 'Polo', 'Golf', 'T-Cross', 'Nivus', 'Jetta', 'Saveiro', 'Virtus', 'Amarok', 'Voyage', 'Fox', 'Fusca', 'Taos', 'UP!'],
+  'Fiat': ['Uno', 'Palio', 'Argo', 'Cronos', 'Mobi', 'Toro', 'Strada', 'Pulse', 'Fastback', 'Siena', '500', 'Ducato', 'Fiorino', 'Idea', 'Marea', 'Punto'],
+  'GM - Chevrolet': ['Onix', 'Prisma', 'Tracker', 'Cruze', 'S10', 'Spin', 'Montana', 'Equinox', 'Celta', 'Astra', 'Vectra', 'Zafira', 'Cobalt', 'Classic', 'Trailblazer'],
+  'Toyota': ['Corolla', 'Etios', 'Yaris', 'Hilux', 'SW4', 'Corolla Cross', 'Rav4', 'Camry', 'Prius'],
   'Honda': ['Civic', 'City', 'Fit', 'HR-V', 'WR-V', 'CR-V', 'Accord'],
-  'Peugeot': ['208', '2008', '3008', '408', '5008', 'Partner', 'Expert'],
-  'Renault': ['Sandero', 'Logan', 'Duster', 'Kwid', 'Captur', 'Oroch', 'Master', 'Stepway'],
-  'Ford': ['Ka', 'Fiesta', 'EcoSport', 'Ranger', 'Focus', 'Fusion', 'Territory', 'Maverick'],
-  'Hyundai': ['HB20', 'HB20S', 'Creta', 'Tucson', 'Santa Fe', 'IX35', 'Azera'],
-  'Jeep': ['Renegade', 'Compass', 'Commander', 'Wrangler', 'Cherokee']
+  'Peugeot': ['208', '2008', '3008', '408', '5008', 'Partner', 'Expert', '206', '207', '307', '308'],
+  'Renault': ['Sandero', 'Logan', 'Duster', 'Kwid', 'Captur', 'Oroch', 'Master', 'Stepway', 'Clio', 'Fluence', 'Koleos'],
+  'Ford': ['Ka', 'Fiesta', 'EcoSport', 'Ranger', 'Focus', 'Fusion', 'Territory', 'Maverick', 'Edge', 'Mustang'],
+  'Hyundai': ['HB20', 'HB20S', 'Creta', 'Tucson', 'Santa Fe', 'IX35', 'Azera', 'Elantra', 'HR', 'Veloster'],
+  'Jeep': ['Renegade', 'Compass', 'Commander', 'Wrangler', 'Cherokee', 'Grand Cherokee'],
+  'Citroën': ['C3', 'C4 Cactus', 'C4 Lounge', 'C4 Pallas', 'C5', 'Aircross', 'Jumpy', 'Berlingo'],
+  'Nissan': ['Kicks', 'March', 'Versa', 'Frontier', 'Sentra', 'Tiida', 'Livina'],
+  'Mitsubishi': ['L200', 'ASX', 'Eclipse Cross', 'Pajero', 'Outlander', 'Lancer'],
+  'Audi': ['A1', 'A3', 'A4', 'A5', 'Q3', 'Q5', 'TT'],
+  'BMW': ['Série 3', 'Série 1', 'X1', 'X3', 'X5', 'Z4'],
+  'Mercedes-Benz': ['Classe A', 'Classe C', 'Classe E', 'GLA', 'GLC', 'GLE'],
+  'Volvo': ['XC40', 'XC60', 'XC90', 'V40', 'S60'],
+  'Caoa Chery': ['Tiggo 2', 'Tiggo 3X', 'Tiggo 5X', 'Tiggo 7', 'Tiggo 8', 'Arrizo 5', 'Arrizo 6'],
+  'Kia Motors': ['Sportage', 'Sorento', 'Cerato', 'Picanto', 'Bongo', 'Soul'],
+  'BYD': ['Dolphin', 'Seal', 'Song Plus', 'Tan', 'Han', 'Yuan Plus'],
+  'GWM': ['Haval H6', 'Ora 03', 'Poer']
 };
 
 export const COMMON_ENGINES = [
