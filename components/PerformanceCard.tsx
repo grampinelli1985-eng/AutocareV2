@@ -33,7 +33,7 @@ export const PerformanceCard: React.FC<PerformanceCardProps> = ({
                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
                             <Trophy size={18} className="text-amber-500" />
-                            <h3 className="font-black text-slate-800 dark:text-white uppercase text-xs tracking-tight">Sua Graduação IA</h3>
+                            <h3 className="font-black text-slate-800 dark:text-white uppercase text-xs tracking-tight">Prestígio IA</h3>
                         </div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{score.title}</p>
                     </div>

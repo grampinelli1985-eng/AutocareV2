@@ -43,6 +43,7 @@ import { Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { formatPlate, calculateDistance } from './src/utils/helpers';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -487,6 +488,25 @@ const App: React.FC = () => {
           }));
           setFuelLogs(mappedFuelLogs);
         }
+
+        // Fetch Notifications from DB
+        const { data: nData, error: nError } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+
+        if (!nError && nData) {
+          const mappedNotifs = nData.map((n: any) => ({
+            id: n.id,
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            date: n.created_at,
+            isRead: n.is_read
+          }));
+          setNotifications(mappedNotifs);
+        }
       } catch (err) {
         console.error('Error synchronizing data with Supabase:', err);
       } finally {
@@ -523,9 +543,61 @@ const App: React.FC = () => {
   useEffect(() => {
     const platform = Capacitor.getPlatform();
     if (isLoggedIn && session?.user && (platform === 'android' || platform === 'ios')) {
-      // Aqui poderíamos capturar o push_token (FCM/OneSignal) e salvar no profile
-      // await supabase.from('profiles').update({ push_token: token }).eq('id', session.user.id);
+      const setupPush = async () => {
+        let perm = await PushNotifications.checkPermissions();
+        if (perm.receive === 'prompt') {
+          perm = await PushNotifications.requestPermissions();
+        }
+
+        if (perm.receive === 'granted') {
+          await PushNotifications.register();
+        }
+
+        PushNotifications.addListener('registration', async ({ value: token }) => {
+          await supabase.from('profiles').update({ push_token: token }).eq('id', session.user.id);
+        });
+
+        PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          addNotification({
+            type: 'info',
+            title: notification.title || 'Nova Notificação',
+            message: notification.body || ''
+          });
+        });
+      };
+      setupPush();
     }
+  }, [isLoggedIn, session]);
+
+  // Realtime Notifications Listener
+  useEffect(() => {
+    if (!isLoggedIn || !session?.user) return;
+
+    const channel = supabase
+      .channel(`notifications-${session.user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${session.user.id}`
+      }, (payload) => {
+        const newNotif = payload.new as any;
+        setNotifications(prev => [{
+          id: newNotif.id,
+          type: newNotif.type,
+          title: newNotif.title,
+          message: newNotif.message,
+          date: newNotif.created_at,
+          isRead: newNotif.is_read
+        }, ...prev]);
+
+        // Vibration or Alert sound could go here if native
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [isLoggedIn, session]);
 
   useEffect(() => {
@@ -603,9 +675,12 @@ const App: React.FC = () => {
     setNotifications(prev => [newNotif, ...prev]);
   };
 
-  const handleOpenNotifications = () => {
+  const handleOpenNotifications = async () => {
     setShowNotifications(true);
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    if (session?.user) {
+      await supabase.from('notifications').update({ is_read: true }).eq('user_id', session.user.id);
+    }
   };
 
   const handleLogin = () => {
