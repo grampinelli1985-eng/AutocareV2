@@ -272,7 +272,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               Política de Privacidade
             </a>
             <span className="w-1 h-1 bg-white/20 rounded-full" />
-            <span className="text-[9px] text-slate-400 font-bold uppercase">Versão 1.0.9</span>
+            <span className="text-[9px] text-slate-400 font-bold uppercase">Versão 1.0.10</span>
           </div>
         </div>
       </div>
