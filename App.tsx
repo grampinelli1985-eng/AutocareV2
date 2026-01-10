@@ -98,6 +98,7 @@ const App: React.FC = () => {
 
   // Sighting state
   const [sightingVehicleId, setSightingVehicleId] = useState<string | null>(null);
+  const [sightingVehiclePlate, setSightingVehiclePlate] = useState<string | null>(null);
   const [isSightingValidated, setIsSightingValidated] = useState(false);
   const [sightingError, setSightingError] = useState<string | null>(null);
   const [showManualLocationInput, setShowManualLocationInput] = useState(false);
@@ -689,13 +690,40 @@ const App: React.FC = () => {
   const handleNotificationAction = (notification: NotificationItem) => {
     if (notification.type === 'theft') {
       const vehicleId = notification.data?.vehicleId;
+      const plate = notification.data?.plate;
       if (vehicleId) {
         setSightingVehicleId(vehicleId);
+        if (plate) setSightingVehiclePlate(plate);
         setShowSightingModal(true);
         setShowNotifications(false);
       }
     }
   };
+
+  useEffect(() => {
+    const fetchSightingPlate = async () => {
+      if (sightingVehicleId && !sightingVehiclePlate) {
+        // Se o carro já estiver no estado local (carro do próprio usuário), não precisa buscar
+        const local = vehicles.find(v => v.id === sightingVehicleId);
+        if (local) {
+          setSightingVehiclePlate(local.plate);
+          return;
+        }
+
+        // Caso contrário, busca no banco (alerta comunitário)
+        const { data, error } = await supabase
+          .from('vehicles')
+          .select('plate')
+          .eq('id', sightingVehicleId)
+          .single();
+
+        if (!error && data) {
+          setSightingVehiclePlate(data.plate);
+        }
+      }
+    };
+    fetchSightingPlate();
+  }, [sightingVehicleId, vehicles]);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -1200,11 +1228,17 @@ const App: React.FC = () => {
 
   const handlePlateValidation = (val: string) => {
     if (!sightingVehicleId) return;
-    const targetVehicle = vehicles.find(v => v.id === sightingVehicleId);
-    if (!targetVehicle || !targetVehicle.plate) return;
+
+    // Prioriza o plate que buscamos ou o que já está no objeto do veículo local
+    const targetPlate = sightingVehiclePlate || vehicles.find(v => v.id === sightingVehicleId)?.plate;
+
+    if (!targetPlate) {
+      console.warn("Placa do alvo não encontrada para validação.");
+      return;
+    }
 
     // Remove espaços, hífens e converte para maiúsculo para comparação segura
-    const cleanPlate = targetVehicle.plate.replace(/[^A-Z0-9]/ig, '').toUpperCase();
+    const cleanPlate = targetPlate.replace(/[^A-Z0-9]/ig, '').toUpperCase();
     const cleanInput = val.replace(/[^A-Z0-9]/ig, '').toUpperCase();
 
     if (cleanInput.length === 2) {
@@ -2045,7 +2079,7 @@ const App: React.FC = () => {
         {/* MODAIS DE APOIO */}
         <SightingModal
           isOpen={!!sightingVehicleId}
-          onClose={() => { setSightingVehicleId(null); setSightingError(null); setIsSightingValidated(false); }}
+          onClose={() => { setSightingVehicleId(null); setSightingVehiclePlate(null); setSightingError(null); setIsSightingValidated(false); }}
           onSubmit={handleSightingSubmit}
           onPlateValidation={handlePlateValidation}
           sightingError={sightingError}

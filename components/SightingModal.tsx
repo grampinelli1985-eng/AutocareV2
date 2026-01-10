@@ -52,10 +52,17 @@ export const SightingModal: React.FC<SightingModalProps> = ({
                         <input
                             required
                             name="plateDigits"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             maxLength={2}
-                            placeholder="Últimos 2 dígitos"
-                            onChange={(e) => onPlateValidation(e.target.value)}
-                            className={`w-full bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-4 text-sm font-black text-center ${sightingError ? 'border-2 border-red-500' : ''}`}
+                            placeholder="00"
+                            onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, ''); // Garantepenas números
+                                e.target.value = val;
+                                onPlateValidation(val);
+                            }}
+                            className={`w-full bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-4 text-2xl font-black text-center tracking-widest ${sightingError ? 'border-2 border-red-500 text-red-600' : 'text-indigo-600'}`}
                         />
                         {sightingError && (
                             <p className="text-[10px] text-red-500 font-bold text-center mt-2">{sightingError}</p>
