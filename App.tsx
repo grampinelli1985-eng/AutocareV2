@@ -1201,13 +1201,19 @@ const App: React.FC = () => {
   const handlePlateValidation = (val: string) => {
     if (!sightingVehicleId) return;
     const targetVehicle = vehicles.find(v => v.id === sightingVehicleId);
-    if (val.length === 2) {
-      if (targetVehicle?.plate?.slice(-2) === val) {
+    if (!targetVehicle || !targetVehicle.plate) return;
+
+    // Remove espaços, hífens e converte para maiúsculo para comparação segura
+    const cleanPlate = targetVehicle.plate.replace(/[^A-Z0-9]/ig, '').toUpperCase();
+    const cleanInput = val.replace(/[^A-Z0-9]/ig, '').toUpperCase();
+
+    if (cleanInput.length === 2) {
+      if (cleanPlate.endsWith(cleanInput)) {
         setIsSightingValidated(true);
         setSightingError(null);
       } else {
         setIsSightingValidated(false);
-        setSightingError("Placa não confere com o veiculo roubado.");
+        setSightingError("Placa não confere com o veículo roubado.");
       }
     } else {
       setIsSightingValidated(false);
