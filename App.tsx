@@ -1487,14 +1487,9 @@ const App: React.FC = () => {
   const confirmRecovery = async () => {
     if (!vehicleToRecoverId) return;
 
-    const { error } = await supabase
-      .from('vehicles')
-      .update({
-        is_stolen: false,
-        theft_report: null,
-        sightings: []
-      })
-      .eq('id', vehicleToRecoverId);
+    const { error } = await supabase.rpc('confirm_vehicle_recovery', {
+      p_vehicle_id: vehicleToRecoverId
+    });
 
     if (error) {
       alert("Erro ao confirmar recuperação: " + error.message);
