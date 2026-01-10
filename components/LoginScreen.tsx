@@ -17,26 +17,25 @@ const GoogleIcon = () => (
   </svg>
 );
 
-
-
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [isManual, setIsManual] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setLoading(true);
     setError(null);
+    setSuccess(null);
     const platform = Capacitor.getPlatform();
     const isNative = platform === 'android' || platform === 'ios';
     const redirectTo = isNative
       ? 'com.autocareia://auth-callback'
       : window.location.origin;
-
-    console.log('OAuth platform:', platform, 'Redirecting to:', redirectTo);
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -48,13 +47,35 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     setLoading(false);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '?reset=true',
+    });
+
+    if (resetError) {
+      setError(resetError.message);
+    } else {
+      setSuccess("E-mail de recuperação enviado! Verifique sua caixa de entrada.");
+      setTimeout(() => {
+        setIsForgotPassword(false);
+        setSuccess(null);
+      }, 5000);
+    }
+    setLoading(false);
+  };
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     if (isSignUp) {
-      // Flow de Cadastro
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -63,12 +84,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       if (signUpError) {
         setError(signUpError.message);
       } else {
-        // Sucesso no cadastro, tenta logar automaticamente ou avisa para verificar email
-        setError("Conta criada! Verifique seu e-mail ou faça login.");
-        setIsSignUp(false); // Volta para login
+        setSuccess("Conta criada! Verifique seu e-mail ou faça login.");
+        setIsSignUp(false);
       }
     } else {
-      // Flow de Login
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -78,7 +97,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         setError("E-mail ou senha incorretos.");
       }
     }
-
     setLoading(false);
   };
 
@@ -109,6 +127,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   {error}
                 </div>
               )}
+              {success && (
+                <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl text-xs font-bold border border-emerald-100 animate-in fade-in">
+                  {success}
+                </div>
+              )}
               <button
                 onClick={() => handleOAuthLogin('google')}
                 disabled={loading}
@@ -128,56 +151,112 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           </>
         ) : (
           <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
-            <button onClick={() => { setIsManual(false); setError(null); }} className="text-indigo-600 text-sm font-bold flex items-center gap-1">
+            <button onClick={() => { setIsManual(false); setIsSignUp(false); setIsForgotPassword(false); setError(null); setSuccess(null); }} className="text-indigo-600 text-sm font-bold flex items-center gap-1">
               Voltar
             </button>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{isSignUp ? 'Criar Conta' : 'Login Manual'}</h2>
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-4 top-4 text-slate-400" size={18} />
-                <input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="E-mail"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none"
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-4 top-4 text-slate-400" size={18} />
-                <input
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Senha"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none"
-                />
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-indigo-600 py-4 rounded-2xl font-bold text-white shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center disabled:opacity-50 active:scale-95"
-              >
-                {loading ? <Loader2 className="animate-spin" size={24} /> : (isSignUp ? 'Cadastrar' : 'Entrar agora')}
-              </button>
-
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
-                  className="text-xs font-bold text-indigo-500 hover:text-indigo-700 underline"
-                >
-                  {isSignUp ? 'Já tem conta? Fazer Login' : 'Não tem conta? Criar agora'}
-                </button>
+            {isForgotPassword ? (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Recuperar Senha</h2>
+                <p className="text-slate-500 text-sm">Insira seu e-mail para receber as instruções.</p>
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-4 text-slate-400" size={18} />
+                    <input
+                      required
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Seu e-mail cadastrado"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-indigo-600 py-4 rounded-2xl font-bold text-white shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center disabled:opacity-50 active:scale-95"
+                  >
+                    {loading ? <Loader2 className="animate-spin" size={24} /> : 'Enviar e-mail'}
+                  </button>
+                  {error && <p className="text-red-500 text-[10px] font-bold text-center bg-red-50 p-2 rounded-lg">{error}</p>}
+                  {success && <p className="text-emerald-500 text-[10px] font-bold text-center bg-emerald-50 p-2 rounded-lg">{success}</p>}
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsForgotPassword(false)}
+                      className="text-xs font-bold text-slate-400 hover:text-indigo-600"
+                    >
+                      Voltar para o Login
+                    </button>
+                  </div>
+                </form>
               </div>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{isSignUp ? 'Criar Conta' : 'Login Manual'}</h2>
+                <form onSubmit={handleEmailLogin} className="space-y-4">
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-4 text-slate-400" size={18} />
+                    <input
+                      required
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="E-mail"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-4 text-slate-400" size={18} />
+                    <input
+                      required
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Senha"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none"
+                    />
+                  </div>
 
-              {error && (
-                <p className="text-red-500 text-[10px] font-bold text-center bg-red-50 p-2 rounded-lg">{error}</p>
-              )}
-            </form>
+                  {!isSignUp && (
+                    <div className="text-right">
+                      <button
+                        type="button"
+                        onClick={() => setIsForgotPassword(true)}
+                        className="text-xs font-bold text-indigo-500 hover:text-indigo-700"
+                      >
+                        Esqueci minha senha
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-indigo-600 py-4 rounded-2xl font-bold text-white shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center disabled:opacity-50 active:scale-95"
+                  >
+                    {loading ? <Loader2 className="animate-spin" size={24} /> : (isSignUp ? 'Cadastrar' : 'Entrar agora')}
+                  </button>
+
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => { setIsSignUp(!isSignUp); setError(null); setSuccess(null); }}
+                      className="text-xs font-bold text-indigo-500 hover:text-indigo-700 underline"
+                    >
+                      {isSignUp ? 'Já tem conta? Fazer Login' : 'Não tem conta? Criar agora'}
+                    </button>
+                  </div>
+
+                  {error && (
+                    <p className="text-red-500 text-[10px] font-bold text-center bg-red-50 p-2 rounded-lg">{error}</p>
+                  )}
+                  {success && (
+                    <p className="text-emerald-500 text-[10px] font-bold text-center bg-emerald-50 p-2 rounded-lg">{success}</p>
+                  )}
+                </form>
+              </>
+            )}
           </div>
         )}
       </div>
