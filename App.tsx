@@ -32,6 +32,7 @@ import { AccountDeletionModal } from './components/AccountDeletionModal';
 import { RecoveryConfirmationModal } from './components/RecoveryConfirmationModal';
 import { FuelConsumptionCard } from './components/FuelConsumptionCard';
 import { PreventiveRadarCard } from './components/PreventiveRadarCard';
+import { KmReminderModal } from './components/KmReminderModal';
 import { Vehicle, MaintenanceTask, ServiceRecord, TheftReport, MaintenanceMilestone, MaintenancePriority, TheftSighting, FuelLog } from './types';
 import { getSmartMaintenanceAdvice, getFuelEconomyAdvice, analyzeInvoice } from './services/geminiService';
 import { getFipeValue, FipeData } from './services/fipeService';
@@ -141,6 +142,7 @@ const App: React.FC = () => {
   const [vehicleToRecoverId, setVehicleToRecoverId] = useState<string | null>(null);
   const [activeRecoveryAlert, setActiveRecoveryAlert] = useState<{ vehicle: Vehicle } | null>(null);
   const [newSightingAlert, setNewSightingAlert] = useState<{ vehicle: Vehicle, mapUrl: string } | null>(null);
+  const [showKmReminderModal, setShowKmReminderModal] = useState(false);
 
   const selectedVehicle = useMemo(() =>
     vehicles.find(v => v.id === selectedVehicleId) || null
@@ -382,6 +384,32 @@ const App: React.FC = () => {
             }).eq('id', userId);
           } else {
             setAiQuestionsRemaining(Math.max(0, 5 - (profile.ai_questions_count || 0)));
+          }
+
+          // Recurring KM Reminder (Every 15 days) for Premium users
+          if (profile.plan === 'premium') {
+            const lastReminderDateStr = profile.last_km_reminder_date;
+            const todayDateStr = new Date().toISOString().split('T')[0];
+
+            if (lastReminderDateStr) {
+              const lastDate = new Date(lastReminderDateStr);
+              const today = new Date(todayDateStr);
+              const diffTime = Math.abs(today.getTime() - lastDate.getTime());
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+              if (diffDays >= 15) {
+                setShowKmReminderModal(true);
+                addNotification({
+                  type: 'info',
+                  title: 'Lembrete de KM',
+                  message: 'Atualize o KM do seu veículo para receber novas dicas personalizadas da IA.'
+                });
+                await supabase.from('profiles').update({ last_km_reminder_date: todayDateStr }).eq('id', userId);
+              }
+            } else {
+              // If never reminded, set initial date but don't show yet (will show after first registration)
+              await supabase.from('profiles').update({ last_km_reminder_date: todayDateStr }).eq('id', userId);
+            }
           }
         } else {
           // Create profile if it doesn't exist
@@ -960,6 +988,13 @@ const App: React.FC = () => {
         title: 'Novo Veículo Adicionado',
         message: `${vehicleData.brand} ${vehicleData.model} ${vehicleData.version || ''} agora faz parte da sua garagem.`
       });
+
+      // Special Reminder for Premium Users
+      if (userPlan === 'premium') {
+        setShowKmReminderModal(true);
+        const todayStr = new Date().toISOString().split('T')[0];
+        await supabase.from('profiles').update({ last_km_reminder_date: todayStr }).eq('id', session.user.id);
+      }
     }
     setShowAddVehicleModal(false);
   };
@@ -2012,6 +2047,11 @@ const App: React.FC = () => {
             setShowReceiptModal(false);
             setSelectedReceiptUrl(null);
           }}
+        />
+
+        <KmReminderModal
+          isOpen={showKmReminderModal}
+          onClose={() => setShowKmReminderModal(false)}
         />
       </div >
     </Layout >
