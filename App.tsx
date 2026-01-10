@@ -510,7 +510,8 @@ const App: React.FC = () => {
             ...n,
             isRead: n.is_read,
             date: n.created_at,
-            mapUrl: n.map_url || n.data?.mapUrl // Suporte a campos legados
+            data: typeof n.data === 'string' ? JSON.parse(n.data) : n.data,
+            mapUrl: n.map_url || (typeof n.data === 'string' ? JSON.parse(n.data).mapUrl : n.data?.mapUrl)
           }));
           setNotifications(mapped);
 
@@ -616,8 +617,8 @@ const App: React.FC = () => {
           message: payload.new.message,
           date: payload.new.created_at,
           isRead: payload.new.is_read,
-          data: payload.new.data,
-          mapUrl: payload.new.data?.mapUrl
+          data: typeof payload.new.data === 'string' ? JSON.parse(payload.new.data) : payload.new.data,
+          mapUrl: payload.new.data?.mapUrl || (typeof payload.new.data === 'string' ? JSON.parse(payload.new.data).mapUrl : undefined)
         };
 
         // Se for roubo e não tiver a placa, tenta buscar na hora
@@ -657,14 +658,6 @@ const App: React.FC = () => {
             if (vData) {
               setActiveRecoveryAlert({ vehicle: vData });
             }
-          }
-        }
-
-        // Se for recuperação
-        if (newNotif.type === 'recovery' && newNotif.data?.vehicleId) {
-          const { data: vData } = await supabase.from('vehicles').select('*').eq('id', newNotif.data.vehicleId).single();
-          if (vData) {
-            setActiveRecoveryAlert({ vehicle: vData });
           }
         }
 
@@ -1506,7 +1499,6 @@ const App: React.FC = () => {
     ));
     setVehicleToRecoverId(null);
     if (recoveredVehicle) {
-      setActiveRecoveryAlert({ vehicle: recoveredVehicle });
       addNotification({
         type: 'info',
         title: 'Veículo Recuperado',

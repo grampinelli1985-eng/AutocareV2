@@ -43,8 +43,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                         notifications.map(n => (
                             <div
                                 key={n.id}
-                                className={`p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex gap-4 transition-all hover:bg-white dark:hover:bg-slate-800 ${n.type === 'theft' ? 'cursor-pointer hover:border-red-200 dark:hover:border-red-900/30' : ''}`}
-                                onClick={() => n.type === 'theft' && onAction?.(n)}
+                                className={`p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex gap-4 transition-all hover:bg-white dark:hover:bg-slate-800 ${(n.type === 'theft' || n.type === 'sighting') ? 'cursor-pointer hover:border-red-200 dark:hover:border-red-900/30' : ''}`}
+                                onClick={() => (n.type === 'theft' || n.type === 'sighting') && onAction?.(n)}
                             >
                                 <div className={`mt-1 shrink-0 w-2 h-2 rounded-full ${n.type === 'theft' ? 'bg-red-500 animate-pulse' : n.type === 'maintenance' ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
                                 <div className="space-y-1 flex-1">
