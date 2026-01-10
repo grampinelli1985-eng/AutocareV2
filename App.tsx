@@ -651,12 +651,15 @@ const App: React.FC = () => {
         }
 
         // Se for recuperação
-        if (newNotif.type === 'recovery' && newNotif.data?.vehicleId) {
-          const isOwnVehicle = vehicles.some(v => v.id === newNotif.data.vehicleId);
-          if (!isOwnVehicle) {
-            const { data: vData } = await supabase.from('vehicles').select('*').eq('id', newNotif.data.vehicleId).single();
-            if (vData) {
-              setActiveRecoveryAlert({ vehicle: vData });
+        if (newNotif.type === 'recovery') {
+          const vId = newNotif.data?.vehicleId || newNotif.data?.vehicle_id;
+          if (vId) {
+            const isOwnVehicle = vehicles.some(v => v.id === vId);
+            if (!isOwnVehicle) {
+              const { data: vData } = await supabase.from('vehicles').select('*').eq('id', vId).single();
+              if (vData) {
+                setActiveRecoveryAlert({ vehicle: vData });
+              }
             }
           }
         }
@@ -782,11 +785,22 @@ const App: React.FC = () => {
   const handleNotificationAction = (notification: NotificationItem) => {
     const vehicleId = notification.data?.vehicleId;
 
-    if (notification.type === 'sighting') {
-      const vId = notification.data?.vehicleId;
+    if (notification.type === 'sighting' || notification.type === 'recovery') {
+      const vId = notification.data?.vehicleId || notification.data?.vehicle_id;
       if (!vId) return;
 
       const triggerModal = async () => {
+        // Se for recuperação, tratamos diferente
+        if (notification.type === 'recovery') {
+          const { data: vData } = await supabase.from('vehicles').select('*').eq('id', vId).single();
+          if (vData) {
+            setActiveRecoveryAlert({ vehicle: vData });
+            setShowNotifications(false);
+          }
+          return;
+        }
+
+        // Se for avistamento...
         // Tenta pegar do state local primeiro para agilidade
         let vData = vehicles.find(v => v.id === vId);
 
