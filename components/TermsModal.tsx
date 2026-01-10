@@ -33,7 +33,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onAccept, onClos
                         <strong className="text-indigo-600">3. PRIVACIDADE E GPS:</strong> O AutoCare solicita acesso à sua localização (GPS) apenas durante o uso para calcular distâncias em alertas ou validar avistamentos. Ao registrar um avistamento, você autoriza o compartilhamento da localização aproximada. Não rastreamos você em tempo real ou em segundo plano. Consulte nossa <a href="https://sites.google.com/view/politicadeprivacidadeautocare/in%C3%ADcio" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">Política de Privacidade completa</a>.
                     </p>
                     <p>
-                        <strong className="text-indigo-600">4. USO DO PLANO:</strong> O Plano Free permite o uso limitado. O upgrade para o Plano Premium oferece acesso ilimitado e relatórios, via Google Play Billing no Android.
+                        <strong className="text-indigo-600">4. USO DO PLANO:</strong> O Plano Free permite o uso limitado das funcionalidades e proteção comunitária. O upgrade para o Plano Premium oferece acesso ilimitado e relatórios, via Google Play Billing no Android.
                     </p>
                     <p>
                         <strong className="text-indigo-600">5. CONTEÚDO GERADO PELO USUÁRIO (UGC):</strong> É estritamente proibido postar conteúdo ofensivo, falso ou abusivo. O AutoCare reserva-se o direito de remover qualquer conteúdo e banir usuários que violem estas regras. Outros usuários podem denunciar abusos através do botão de denúncia disponível em cada avistamento.

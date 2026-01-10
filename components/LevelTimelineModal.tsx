@@ -1,16 +1,18 @@
 
 import React from 'react';
-import { Trophy, X, Zap, ShieldCheck, Lock, CheckCircle2, TrendingUp, Info } from 'lucide-react';
+import { Trophy, X, Zap, ShieldCheck, Lock, CheckCircle2, TrendingUp, Info, Sparkles } from 'lucide-react';
 
 interface LevelTimelineModalProps {
     currentLevel: number;
     currentTitle: string;
+    progress: number;
     onClose: () => void;
 }
 
 export const LevelTimelineModal: React.FC<LevelTimelineModalProps> = ({
     currentLevel,
     currentTitle,
+    progress,
     onClose
 }) => {
     const titles = [
@@ -48,6 +50,35 @@ export const LevelTimelineModal: React.FC<LevelTimelineModalProps> = ({
                     </p>
                 </div>
 
+                {/* Progress Bar */}
+                <div className="space-y-3 px-1">
+                    <div className="flex justify-between items-end">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progresso do Nível</p>
+                            <p className="text-lg font-black text-slate-800 dark:text-white leading-none">
+                                {progress === 100 ? 'Maestria Atingida!' : `${progress}% para o Nível ${currentLevel + 1}`}
+                            </p>
+                        </div>
+                        {progress < 100 && (
+                            <div className="bg-indigo-600 text-white text-[9px] font-black px-2 py-1 rounded-lg shadow-lg animate-bounce-slow">
+                                +{100 - progress}%
+                            </div>
+                        )}
+                    </div>
+                    <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-1 border border-slate-200 dark:border-slate-800">
+                        <div
+                            className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full transition-all duration-1000 ease-out relative group"
+                            style={{ width: `${progress}%` }}
+                        >
+                            <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                            <Sparkles size={8} className="absolute right-1 top-0.5 text-white animate-spin-slow opacity-50" />
+                        </div>
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight text-center">
+                        {progress === 100 ? 'Você atingiu o nível máximo de cuidado!' : `Faltam apenas ${100 - progress}% para seu próximo título.`}
+                    </p>
+                </div>
+
                 {/* Timeline */}
                 <div className="space-y-4 pt-2">
                     {titles.map((title, index) => {
@@ -65,10 +96,10 @@ export const LevelTimelineModal: React.FC<LevelTimelineModalProps> = ({
 
                                 {/* Level Badge/Icon */}
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border-2 transition-all duration-500 ${isCurrent
-                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none animate-pulse'
-                                        : isPast
-                                            ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/50 text-indigo-600'
-                                            : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-300'
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none animate-pulse'
+                                    : isPast
+                                        ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/50 text-indigo-600'
+                                        : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-300'
                                     }`}>
                                     {isPast ? (
                                         <CheckCircle2 size={24} />
@@ -90,10 +121,10 @@ export const LevelTimelineModal: React.FC<LevelTimelineModalProps> = ({
                                         )}
                                     </div>
                                     <p className={`text-sm font-black uppercase tracking-tight ${isCurrent
-                                            ? 'text-slate-800 dark:text-white'
-                                            : isFuture
-                                                ? 'text-slate-300 dark:text-slate-600'
-                                                : 'text-slate-600 dark:text-slate-400 opacity-80'
+                                        ? 'text-slate-800 dark:text-white'
+                                        : isFuture
+                                            ? 'text-slate-300 dark:text-slate-600'
+                                            : 'text-slate-600 dark:text-slate-400 opacity-80'
                                         }`}>
                                         {title}
                                     </p>

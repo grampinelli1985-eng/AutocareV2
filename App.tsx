@@ -266,7 +266,12 @@ const App: React.FC = () => {
     ];
     const title = titles[level - 1] || 'Especialista';
 
-    return { eco, conservation, level, title };
+    // 4. Progress to next level (%)
+    const nextLevelMin = (level + 1) * 10;
+    const currentLevelMin = level === 1 ? 0 : level * 10;
+    const progress = level >= 10 ? 100 : Math.max(0, Math.min(100, Math.round(((avgScore - currentLevelMin) / (nextLevelMin - currentLevelMin)) * 100)));
+
+    return { eco, conservation, level, title, progress };
   }, [selectedVehicle, averageConsumption, milestones, aiAnalysis]);
 
   const unreadNotificationsCount = useMemo(() =>
@@ -1582,6 +1587,7 @@ const App: React.FC = () => {
           <LevelTimelineModal
             currentLevel={performanceScore.level}
             currentTitle={performanceScore.title}
+            progress={performanceScore.progress}
             onClose={() => setShowLevelModal(false)}
           />
         )}
