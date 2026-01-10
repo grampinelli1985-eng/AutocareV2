@@ -695,7 +695,12 @@ const App: React.FC = () => {
       const plate = notification.data?.plate;
       if (vehicleId) {
         setSightingVehicleId(vehicleId);
-        if (plate) setSightingVehiclePlate(plate);
+        // Prioriza a placa vinda diretamente da notificação para ser instantâneo
+        if (plate) {
+          setSightingVehiclePlate(plate);
+        } else {
+          setSightingVehiclePlate(null); // Reseta para forçar o fetch se necessário
+        }
         setShowSightingModal(true);
         setShowNotifications(false);
       }
@@ -1234,6 +1239,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const validate = () => {
+      // Se não temos o ID ou a entrada é curta, não valida
       if (!sightingVehicleId || currentPlateInput.length < 2) {
         setIsSightingValidated(false);
         setSightingError(null);
@@ -1241,9 +1247,11 @@ const App: React.FC = () => {
       }
 
       const targetPlate = sightingVehiclePlate || vehicles.find(v => v.id === sightingVehicleId)?.plate;
+
+      // Se ainda não temos a placa (buscando do banco), avisamos o usuário
       if (!targetPlate) {
         setIsSightingValidated(false);
-        setSightingError("Buscando dados do veículo...");
+        setSightingError("Sincronizando dados... (Aguarde)");
         return;
       }
 
