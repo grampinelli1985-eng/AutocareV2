@@ -146,6 +146,8 @@ const App: React.FC = () => {
   const [activeCommunityAlert, setActiveCommunityAlert] = useState<{ vehicle: Vehicle, report: TheftReport } | null>(null);
   const [vehicleToRecoverId, setVehicleToRecoverId] = useState<string | null>(null);
   const [activeRecoveryAlert, setActiveRecoveryAlert] = useState<{ vehicle: Vehicle } | null>(null);
+  const [showSightingSuccess, setShowSightingSuccess] = useState(false);
+  const [sightingSuccessData, setSightingSuccessData] = useState({ vehicleName: '', location: '' });
   const [newSightingAlert, setNewSightingAlert] = useState<{ vehicle: Vehicle, mapUrl: string } | null>(null);
   const [showKmReminderModal, setShowKmReminderModal] = useState(false);
 
@@ -1364,7 +1366,19 @@ const App: React.FC = () => {
         ));
       }
 
-      const targetVehicle = vehicles.find(v => v.id === sightingVehicleId) || { model: 'veículo' };
+      // Mark related theft notifications as read
+      setNotifications(prev => prev.map(n => {
+        if (n.type === 'theft' && n.data?.vehicleId === sightingVehicleId) {
+          return { ...n, isRead: true };
+        }
+        return n;
+      }));
+
+      const targetVehicle = vehicles.find(v => v.id === sightingVehicleId) || { brand: 'Veículo', model: 'identificado' };
+      const vehicleName = `${targetVehicle.brand} ${targetVehicle.model}`;
+
+      setSightingSuccessData({ vehicleName, location: locationText });
+      setShowSightingSuccess(true);
 
       setSightingVehicleId(null);
       setSightingVehiclePlate(null);
@@ -1372,14 +1386,6 @@ const App: React.FC = () => {
       setIsSightingValidated(false);
       setShowManualLocationInput(false);
       setIsSightingLoading(false);
-      if (isMyVehicle) setNewSightingAlert({ vehicle: targetVehicle as Vehicle, mapUrl: mapUrl || '' });
-
-      addNotification({
-        type: 'theft',
-        title: 'Veículo Avistado!',
-        message: `Um membro da comunidade avistou o veículo. ${mapUrl ? 'Confira o mapa agora.' : `Local: ${locationText}`}`,
-        mapUrl: mapUrl
-      });
     };
 
     if (manualLocation) {
@@ -2168,6 +2174,13 @@ const App: React.FC = () => {
           showManualLocationInput={showManualLocationInput}
           isSightingValidated={isSightingValidated}
           isLoading={isSightingLoading}
+        />
+
+        <SightingSuccessModal
+          isOpen={showSightingSuccess}
+          onClose={() => setShowSightingSuccess(false)}
+          vehicleName={sightingSuccessData.vehicleName}
+          location={sightingSuccessData.location}
         />
 
         <RecoverySuccessModal
