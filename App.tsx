@@ -616,7 +616,8 @@ const App: React.FC = () => {
           message: payload.new.message,
           date: payload.new.created_at,
           isRead: payload.new.is_read,
-          data: payload.new.data
+          data: payload.new.data,
+          mapUrl: payload.new.data?.mapUrl
         };
 
         // Se for roubo e não tiver a placa, tenta buscar na hora
@@ -650,9 +651,12 @@ const App: React.FC = () => {
 
         // Se for recuperação
         if (newNotif.type === 'recovery' && newNotif.data?.vehicleId) {
-          const { data: vData } = await supabase.from('vehicles').select('*').eq('id', newNotif.data.vehicleId).single();
-          if (vData) {
-            setActiveRecoveryAlert({ vehicle: vData });
+          const isOwnVehicle = vehicles.some(v => v.id === newNotif.data.vehicleId);
+          if (!isOwnVehicle) {
+            const { data: vData } = await supabase.from('vehicles').select('*').eq('id', newNotif.data.vehicleId).single();
+            if (vData) {
+              setActiveRecoveryAlert({ vehicle: vData });
+            }
           }
         }
 
