@@ -99,8 +99,10 @@ const App: React.FC = () => {
   // Sighting state
   const [sightingVehicleId, setSightingVehicleId] = useState<string | null>(null);
   const [sightingVehiclePlate, setSightingVehiclePlate] = useState<string | null>(null);
+  const [currentPlateInput, setCurrentPlateInput] = useState('');
   const [isSightingValidated, setIsSightingValidated] = useState(false);
   const [sightingError, setSightingError] = useState<string | null>(null);
+  const [isSightingLoading, setIsSightingLoading] = useState(false);
   const [showManualLocationInput, setShowManualLocationInput] = useState(false);
   const [reportedContent, setReportedContent] = useState<string[]>(() => {
     try {
@@ -1227,21 +1229,27 @@ const App: React.FC = () => {
   };
 
   const handlePlateValidation = (val: string) => {
-    if (!sightingVehicleId) return;
+    setCurrentPlateInput(val);
+  };
 
-    // Prioriza o plate que buscamos ou o que já está no objeto do veículo local
-    const targetPlate = sightingVehiclePlate || vehicles.find(v => v.id === sightingVehicleId)?.plate;
+  useEffect(() => {
+    const validate = () => {
+      if (!sightingVehicleId || currentPlateInput.length < 2) {
+        setIsSightingValidated(false);
+        setSightingError(null);
+        return;
+      }
 
-    if (!targetPlate) {
-      console.warn("Placa do alvo não encontrada para validação.");
-      return;
-    }
+      const targetPlate = sightingVehiclePlate || vehicles.find(v => v.id === sightingVehicleId)?.plate;
+      if (!targetPlate) {
+        setIsSightingValidated(false);
+        setSightingError("Buscando dados do veículo...");
+        return;
+      }
 
-    // Remove espaços, hífens e converte para maiúsculo para comparação segura
-    const cleanPlate = targetPlate.replace(/[^A-Z0-9]/ig, '').toUpperCase();
-    const cleanInput = val.replace(/[^A-Z0-9]/ig, '').toUpperCase();
+      const cleanPlate = targetPlate.replace(/[^A-Z0-9]/ig, '').toUpperCase();
+      const cleanInput = currentPlateInput.replace(/[^A-Z0-9]/ig, '').toUpperCase();
 
-    if (cleanInput.length === 2) {
       if (cleanPlate.endsWith(cleanInput)) {
         setIsSightingValidated(true);
         setSightingError(null);
@@ -1249,11 +1257,9 @@ const App: React.FC = () => {
         setIsSightingValidated(false);
         setSightingError("Placa não confere com o veículo roubado.");
       }
-    } else {
-      setIsSightingValidated(false);
-      setSightingError(null);
-    }
-  };
+    };
+    validate();
+  }, [currentPlateInput, sightingVehiclePlate, sightingVehicleId, vehicles]);
 
   const handleSightingSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1266,41 +1272,51 @@ const App: React.FC = () => {
     const manualLocation = fd.get('manualLocation') as string;
 
     const finalizeSighting = async (locationText: string, mapUrl?: string) => {
-      const newSighting: TheftSighting = {
-        id: 's' + Date.now(),
-        date: new Date().toISOString(),
-        location: locationText,
-        description: mapUrl ? `Visto via coordenadas GPS em tempo real.` : `Localização informada manualmente: ${locationText}`,
-        mapUrl: mapUrl,
-      };
+      if (!sightingVehicleId) return;
+      setIsSightingLoading(true);
 
-      const targetVehicle = vehicles.find(v => v.id === sightingVehicleId);
-      if (!targetVehicle) return;
-
-      const updatedSightings = [newSighting, ...(targetVehicle.sightings || [])];
-
-      const { error } = await supabase
-        .from('vehicles')
-        .update({ sightings: updatedSightings })
-        .eq('id', sightingVehicleId);
+      const { error } = await supabase.rpc('report_vehicle_sighting', {
+        p_vehicle_id: sightingVehicleId,
+        p_location: locationText,
+        p_description: mapUrl ? `Visto via coordenadas GPS em tempo real.` : `Localização informada manualmente: ${locationText}`,
+        p_map_url: mapUrl || ''
+      });
 
       if (error) {
         alert("Erro ao registrar avistamento: " + error.message);
+        setIsSightingLoading(false);
         return;
       }
 
-      setVehicles(prev => prev.map(v =>
-        v.id === sightingVehicleId ? { ...v, sightings: updatedSightings } : v
-      ));
+      // Se for o carro do próprio usuário, atualizamos o estado local
+      const isMyVehicle = vehicles.some(v => v.id === sightingVehicleId);
+      if (isMyVehicle) {
+        const newSighting = {
+          id: 's' + Date.now(),
+          date: new Date().toISOString(),
+          location: locationText,
+          description: mapUrl ? `Visto via coordenadas GPS em tempo real.` : `Localização informada manualmente: ${locationText}`,
+          mapUrl: mapUrl,
+        };
+        setVehicles(prev => prev.map(v =>
+          v.id === sightingVehicleId ? { ...v, sightings: [newSighting, ...(v.sightings || [])] } : v
+        ));
+      }
+
+      const targetVehicle = vehicles.find(v => v.id === sightingVehicleId) || { model: 'veículo' };
 
       setSightingVehicleId(null);
+      setSightingVehiclePlate(null);
+      setCurrentPlateInput('');
       setIsSightingValidated(false);
       setShowManualLocationInput(false);
-      setNewSightingAlert({ vehicle: targetVehicle, mapUrl: mapUrl || '' });
+      setIsSightingLoading(false);
+      if (isMyVehicle) setNewSightingAlert({ vehicle: targetVehicle as Vehicle, mapUrl: mapUrl || '' });
+
       addNotification({
         type: 'theft',
         title: 'Veículo Avistado!',
-        message: `Um membro da comunidade avistou seu ${targetVehicle.model}. ${mapUrl ? 'Confira o mapa agora.' : `Local: ${locationText}`}`,
+        message: `Um membro da comunidade avistou o veículo. ${mapUrl ? 'Confira o mapa agora.' : `Local: ${locationText}`}`,
         mapUrl: mapUrl
       });
     };
@@ -2085,6 +2101,7 @@ const App: React.FC = () => {
           sightingError={sightingError}
           showManualLocationInput={showManualLocationInput}
           isSightingValidated={isSightingValidated}
+          isLoading={isSightingLoading}
         />
 
         <RecoverySuccessModal

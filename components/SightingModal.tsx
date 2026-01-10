@@ -10,6 +10,7 @@ interface SightingModalProps {
     sightingError: string | null;
     showManualLocationInput: boolean;
     isSightingValidated: boolean;
+    isLoading?: boolean;
 }
 
 export const SightingModal: React.FC<SightingModalProps> = ({
@@ -19,7 +20,8 @@ export const SightingModal: React.FC<SightingModalProps> = ({
     onPlateValidation,
     sightingError,
     showManualLocationInput,
-    isSightingValidated
+    isSightingValidated,
+    isLoading = false
 }) => {
     const [confirmedTruth, setConfirmedTruth] = React.useState(false);
     if (!isOpen) return null;
@@ -51,6 +53,7 @@ export const SightingModal: React.FC<SightingModalProps> = ({
                     <div className="space-y-1">
                         <input
                             required
+                            disabled={isLoading}
                             name="plateDigits"
                             type="text"
                             inputMode="numeric"
@@ -62,7 +65,7 @@ export const SightingModal: React.FC<SightingModalProps> = ({
                                 e.target.value = val;
                                 onPlateValidation(val);
                             }}
-                            className={`w-full bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-4 text-2xl font-black text-center tracking-widest ${sightingError ? 'border-2 border-red-500 text-red-600' : 'text-indigo-600'}`}
+                            className={`w-full bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-4 text-2xl font-black text-center tracking-widest ${sightingError ? 'border-2 border-red-500 text-red-600' : 'text-indigo-600'} ${isLoading ? 'opacity-50' : ''}`}
                         />
                         {sightingError && (
                             <p className="text-[10px] text-red-500 font-bold text-center mt-2">{sightingError}</p>
@@ -74,14 +77,18 @@ export const SightingModal: React.FC<SightingModalProps> = ({
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Localização aproximada</p>
                             <input
                                 required
+                                disabled={isLoading}
                                 name="manualLocation"
                                 placeholder="Ex: Av. Paulista, próximo ao MASP"
-                                className="w-full bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-4 text-sm"
+                                className={`w-full bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-4 text-sm ${isLoading ? 'opacity-50' : ''}`}
                             />
                         </div>
                     )}
 
-                    <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 group cursor-pointer" onClick={() => setConfirmedTruth(!confirmedTruth)}>
+                    <div
+                        className={`flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 group cursor-pointer ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                        onClick={() => !isLoading && setConfirmedTruth(!confirmedTruth)}
+                    >
                         <div className={`mt-0.5 shrink-0 w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${confirmedTruth ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-slate-600'}`}>
                             {confirmedTruth && <Eye size={12} className="text-white" />}
                         </div>
@@ -92,10 +99,12 @@ export const SightingModal: React.FC<SightingModalProps> = ({
 
                     <button
                         type="submit"
-                        disabled={!isSightingValidated || !confirmedTruth}
-                        className={`w-full py-5 rounded-[24px] font-black text-white flex items-center justify-center gap-2 ${isSightingValidated && confirmedTruth ? 'bg-indigo-600 shadow-xl shadow-indigo-200' : 'bg-slate-300'}`}
+                        disabled={!isSightingValidated || !confirmedTruth || isLoading}
+                        className={`w-full py-5 rounded-[24px] font-black text-white flex items-center justify-center gap-2 ${isSightingValidated && confirmedTruth && !isLoading ? 'bg-indigo-600 shadow-xl shadow-indigo-200' : 'bg-slate-300'}`}
                     >
-                        {showManualLocationInput ? (
+                        {isLoading ? (
+                            <span className="animate-pulse">Relatando...</span>
+                        ) : showManualLocationInput ? (
                             'Confirmar Localização Manual'
                         ) : (
                             <>
