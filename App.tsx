@@ -12,7 +12,7 @@ import { TheftReportModal } from './components/TheftReportModal';
 import { SightingModal } from './components/SightingModal';
 import { MilestoneDetailModal } from './components/MilestoneDetailModal';
 import { MilestoneCompletionModal } from './components/MilestoneCompletionModal';
-import { RecoverySuccessModal } from './components/RecoverySuccessModal';
+import { RecoveryAlertModal } from './components/RecoveryAlertModal';
 import { ServiceRegistrationModal } from './components/ServiceRegistrationModal';
 import { VehicleDeletionModal } from './components/VehicleDeletionModal';
 import { SightingSuccessModal } from './components/SightingSuccessModal';
@@ -50,7 +50,7 @@ type Theme = 'light' | 'dark' | 'system';
 
 interface NotificationItem {
   id: string;
-  type: 'theft' | 'maintenance' | 'info';
+  type: 'theft' | 'maintenance' | 'info' | 'recovery';
   title: string;
   message: string;
   date: string;
@@ -627,6 +627,29 @@ const App: React.FC = () => {
             console.error('Error fetching plate for real-time theft notification:', vPlateError);
           } else if (vData) {
             newNotif.data.plate = vData.plate;
+          }
+        }
+
+        // Se for roubo (alerta comunitário)
+        if (newNotif.type === 'theft') {
+          // Se não for o dono abrindo sua própria notificação (opcional, mas geralmente queremos ver o alerta de outros)
+          const isOwnVehicle = vehicles.some(v => v.id === newNotif.data?.vehicleId);
+          if (!isOwnVehicle && newNotif.data?.vehicleId) {
+            const { data: vData } = await supabase.from('vehicles').select('*').eq('id', newNotif.data.vehicleId).single();
+            if (vData) {
+              setActiveCommunityAlert({
+                vehicle: vData,
+                report: vData.theft_report || { date: new Date().toISOString(), state: 'Não informado', city: '', description: newNotif.message }
+              });
+            }
+          }
+        }
+
+        // Se for recuperação
+        if (newNotif.type === 'recovery' && newNotif.data?.vehicleId) {
+          const { data: vData } = await supabase.from('vehicles').select('*').eq('id', newNotif.data.vehicleId).single();
+          if (vData) {
+            setActiveRecoveryAlert({ vehicle: vData });
           }
         }
 
@@ -2183,8 +2206,17 @@ const App: React.FC = () => {
           location={sightingSuccessData.location}
         />
 
-        <RecoverySuccessModal
-          report={activeRecoveryAlert}
+        <TheftAlertModal
+          alert={activeCommunityAlert}
+          onClose={() => setActiveCommunityAlert(null)}
+          onReport={(id) => {
+            setReportedContent(prev => [...prev, id]);
+            setActiveCommunityAlert(null);
+          }}
+        />
+
+        <RecoveryAlertModal
+          vehicle={activeRecoveryAlert?.vehicle || null}
           onClose={() => setActiveRecoveryAlert(null)}
         />
 
