@@ -726,14 +726,22 @@ const App: React.FC = () => {
   const handleNotificationAction = (notification: NotificationItem) => {
     if (notification.type === 'theft') {
       const vehicleId = notification.data?.vehicleId;
-      const plate = notification.data?.plate;
+      let plate = notification.data?.plate;
+
+      // Fallback: Tenta extrair a placa da mensagem usando Regex se não houver no data
+      if (!plate && notification.message) {
+        const match = notification.message.match(/\(([^)]+)\)/);
+        if (match && match[1]) {
+          plate = match[1];
+        }
+      }
+
       if (vehicleId) {
         setSightingVehicleId(vehicleId);
-        // Prioriza a placa vinda diretamente da notificação para ser instantâneo
         if (plate) {
           setSightingVehiclePlate(plate);
         } else {
-          setSightingVehiclePlate(null); // Reseta para forçar o fetch se necessário
+          setSightingVehiclePlate(null);
         }
         setShowSightingModal(true);
         setShowNotifications(false);
@@ -1315,15 +1323,17 @@ const App: React.FC = () => {
   const handleSightingSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!sightingVehicleId || !isSightingValidated) return;
-
-    const targetVehicle = vehicles.find(v => v.id === sightingVehicleId);
-    if (!targetVehicle) return;
+    setIsSightingLoading(true);
 
     const fd = new FormData(e.currentTarget);
     const manualLocation = fd.get('manualLocation') as string;
 
     const finalizeSighting = async (locationText: string, mapUrl?: string) => {
-      if (!sightingVehicleId) return;
+      if (!sightingVehicleId) {
+        setIsSightingLoading(false);
+        return;
+      }
+      // Re-garante que o loading está ativo
       setIsSightingLoading(true);
 
       const { error } = await supabase.rpc('report_vehicle_sighting', {
@@ -1378,34 +1388,39 @@ const App: React.FC = () => {
     }
 
     if (!window.isSecureContext) {
+      setIsSightingLoading(false);
       setShowManualLocationInput(true);
-      alert("⚠️ GPS Indisponível: O navegador exige uma conexão segura (HTTPS ou Localhost) para usar o GPS. \n\nComo você está acessando via IP de rede, por favor, informe o local manualmente abaixo.");
+      alert("⚠️ GPS Indisponível: O navegador exige uma conexão segura (HTTPS ou Localhost).");
       return;
     }
 
     if (navigator.geolocation) {
+      const timeoutId = setTimeout(() => {
+        setIsSightingLoading(false);
+        setShowManualLocationInput(true);
+        alert("⏳ Tempo Esgotado: O GPS demorou muito a responder. Por favor, tente novamente ou informe manualmente.");
+      }, 15000);
+
       navigator.geolocation.getCurrentPosition((position) => {
+        clearTimeout(timeoutId);
         const { latitude, longitude } = position.coords;
         const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
         finalizeSighting(`GPS (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`, mapsUrl);
       }, (error) => {
+        clearTimeout(timeoutId);
         console.warn("GPS Error:", error);
+        setIsSightingLoading(false);
         setShowManualLocationInput(true);
-        if (error.code === 1) { // PERMISSION_DENIED
-          alert("📍 Permissão Negada: O acesso à localização foi bloqueado. \n\nPara reativar, clique no ícone de cadeado/configurações ao lado da URL do navegador e limpe as permissões de localização.");
-        } else if (error.code === 3) { // TIMEOUT
-          alert("⏳ Tempo Esgotado: Não foi possível obter sua posição a tempo. Tente novamente ou informe manualmente.");
-        } else {
-          alert("❌ Erro de GPS: Não foi possível obter sua localização automática. Por favor, informe o local manualmente.");
-        }
+        alert("❌ Erro de GPS: Não foi possível obter sua localização. Informe manualmente.");
       }, {
         enableHighAccuracy: true,
-        timeout: 30000,
-        maximumAge: 10000
+        timeout: 10000,
+        maximumAge: 5000
       });
     } else {
+      setIsSightingLoading(false);
       setShowManualLocationInput(true);
-      alert("Seu navegador não suporta geolocalização. Por favor, informe o local manualmente abaixo.");
+      alert("Seu navegador não suporta geolocalização.");
     }
   };
 
