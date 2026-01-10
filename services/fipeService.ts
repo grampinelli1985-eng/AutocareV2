@@ -22,9 +22,33 @@ export async function getFipeValue(brand: string, model: string, year: number, f
 
         // Flexible brand matching (matches "Chevrolet" to "GM - Chevrolet", "Volkswagen" to "VW - VolksWagen")
         const normalizedBrand = brand.toLowerCase().trim();
+        const brandAliases: Record<string, string[]> = {
+            'chevrolet': ['gm', 'chevrolet'],
+            'volkswagen': ['vw', 'volkswagen'],
+            'mercedes': ['mercedes', 'benz'],
+            'land rover': ['land', 'rover'],
+            'fiat': ['fiat'],
+            'ford': ['ford'],
+            'renault': ['renault'],
+            'citroen': ['citroen'],
+            'peugeot': ['peugeot'],
+            'mitsubishi': ['mitsubishi'],
+            'honda': ['honda'],
+            'toyota': ['toyota'],
+            'hyundai': ['hyundai']
+        };
+
         const brandObj = brands.find((b: any) => {
             const name = b.nome.toLowerCase();
-            return name === normalizedBrand || name.includes(normalizedBrand) || normalizedBrand.includes(name);
+            if (name === normalizedBrand || name.includes(normalizedBrand) || normalizedBrand.includes(name)) return true;
+
+            // Check aliases
+            for (const [key, aliases] of Object.entries(brandAliases)) {
+                if (normalizedBrand.includes(key)) {
+                    return aliases.some(alias => name.includes(alias));
+                }
+            }
+            return false;
         });
 
         if (!brandObj) return null;
@@ -48,6 +72,8 @@ export async function getFipeValue(brand: string, model: string, year: number, f
                 .replace(/\bautomatico\b/g, 'aut') // Common alias
                 .replace(/\bcvt\b/g, 'aut')    // Common alias
                 .replace(/\bmt\b/g, 'manual')  // Common alias
+                .replace(/\ballure\b/g, '')     // Trim fluff
+                .replace(/\bgriffe\b/g, '')    // Trim fluff
                 .trim();
         };
 

@@ -139,6 +139,8 @@ const App: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [fuelCostInput, setFuelCostInput] = useState('');
   const [showPerformanceModal, setShowPerformanceModal] = useState(false);
+  const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = useState(false);
+  const [isClearingNotifications, setIsClearingNotifications] = useState(false);
   const [fipeData, setFipeData] = useState<FipeData | null>(null);
   const [isFipeLoading, setIsFipeLoading] = useState(false);
 
@@ -1562,6 +1564,28 @@ const App: React.FC = () => {
     }
   };
 
+  const handleClearNotifications = async () => {
+    if (!session?.user) return;
+
+    try {
+      setIsClearingNotifications(true);
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', session.user.id);
+
+      if (error) throw error;
+
+      setNotifications([]);
+      setShowClearNotificationsConfirm(false);
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+      alert('Erro ao limpar notificações. Tente novamente.');
+    } finally {
+      setIsClearingNotifications(false);
+    }
+  };
+
   const fileToBase64 = (file: File): Promise<{ base64: string; type: string }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -2258,6 +2282,20 @@ const App: React.FC = () => {
                   </div>
                   <ChevronRight size={18} className="text-red-300" />
                 </button>
+
+                <button
+                  onClick={() => setShowClearNotificationsConfirm(true)}
+                  className="w-full flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 group transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <Trash2 className="text-slate-600 dark:text-slate-400" />
+                    <div className="text-left">
+                      <p className="font-bold text-sm">Limpar Notificações</p>
+                      <p className="text-[10px] text-slate-500">Remover todo o histórico de alertas.</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={18} className="text-slate-300" />
+                </button>
               </div>
             </div>
             <button onClick={handleLogout} className="w-full py-4 text-slate-500 font-bold bg-slate-100 dark:bg-slate-800/50 rounded-2xl active:scale-95 transition-all mt-4">Sair da Garagem</button>
@@ -2375,6 +2413,37 @@ const App: React.FC = () => {
           onConfirm={handleDeleteAccount}
           onClose={() => setShowDeleteAccountConfirm(false)}
         />
+
+        {showClearNotificationsConfirm && (
+          <div className="fixed inset-0 z-[3000] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[40px] p-8 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-6 animate-in zoom-in-95">
+              <div className="bg-red-100 dark:bg-red-900/30 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto">
+                <Trash2 className="text-red-600" size={32} />
+              </div>
+              <div className="space-y-2 text-center">
+                <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Limpar Notificações?</h3>
+                <p className="text-xs text-slate-500 font-bold leading-relaxed px-4">
+                  Isso removerá todo o seu histórico de alertas permanentemente. Deseja continuar?
+                </p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <button
+                  disabled={isClearingNotifications}
+                  onClick={handleClearNotifications}
+                  className="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-red-200 dark:shadow-none active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  {isClearingNotifications ? <Loader2 className="animate-spin" size={16} /> : 'Sim, Limpar Tudo'}
+                </button>
+                <button
+                  onClick={() => setShowClearNotificationsConfirm(false)}
+                  className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 py-4 rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <FuelRegistrationModal
           isOpen={showFuelModal}
