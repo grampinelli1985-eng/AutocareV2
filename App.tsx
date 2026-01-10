@@ -754,7 +754,7 @@ const App: React.FC = () => {
       setIsFipeLoading(true);
       getFipeValue(
         selectedVehicle.brand,
-        `${selectedVehicle.model} ${selectedVehicle.engine} ${selectedVehicle.transmission}`,
+        selectedVehicle.version || `${selectedVehicle.model} ${selectedVehicle.engine} ${selectedVehicle.transmission}`,
         selectedVehicle.year,
         selectedVehicle.fuel
       )

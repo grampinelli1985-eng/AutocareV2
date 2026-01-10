@@ -77,7 +77,16 @@ export async function getFipeValue(brand: string, model: string, year: number, f
                 .trim();
         };
 
-        const normalizedSearchModel = normalize(model.replace(new RegExp(brand, 'gi'), ''));
+        // Create a regex to remove any brand-related words from the model string
+        const brandWords = [normalizedBrand, ...Object.values(brandAliases).flat(), brandObj.nome.toLowerCase()];
+        let cleanModel = model.toLowerCase();
+        brandWords.forEach(word => {
+            if (word.length > 2) {
+                cleanModel = cleanModel.replace(new RegExp(word, 'gi'), '');
+            }
+        });
+
+        const normalizedSearchModel = normalize(cleanModel);
         const searchKeywords = normalizedSearchModel.split(/\s+/).filter(k => k.length > 0);
 
         // 3. Score and collect candidates
@@ -86,23 +95,33 @@ export async function getFipeValue(brand: string, model: string, year: number, f
         for (const m of models) {
             const modelName = normalize(m.nome);
             let score = 0;
-
             let keywordsFound = 0;
+
             for (const kw of searchKeywords) {
                 if (modelName.includes(kw)) {
                     keywordsFound++;
-                    if (/[0-9]/.test(kw)) score += 10;
-                    else score += 3;
+                    // Higher weight for version - specific numbers (like 1.6, 2.0, 16V)
+                    if (/[0-9]/.test(kw)) score += 15;
+                    else score += 5;
                 }
             }
 
-            if (modelName.includes(normalizedSearchModel)) score += 20;
-            if (searchKeywords.length > 0) score += (keywordsFound / searchKeywords.length) * 10;
+            // Bonus for substring match (e.g. "Versa" in "Nissan Versa SL")
+            if (modelName.includes(normalizedSearchModel) || normalizedSearchModel.includes(modelName)) {
+                score += 10;
+            }
 
+            // Calculate percentage of keywords found
+            if (searchKeywords.length > 0) {
+                const ratio = keywordsFound / searchKeywords.length;
+                score += ratio * 20;
+            }
+
+            // Length difference penalty (small)
             const lengthDiff = Math.abs(modelName.length - normalizedSearchModel.length);
-            score -= lengthDiff * 0.01;
+            score -= lengthDiff * 0.1;
 
-            if (score >= 5) {
+            if (score >= 5 || keywordsFound >= 1) {
                 candidates.push({ m, score });
             }
         }
@@ -115,8 +134,12 @@ export async function getFipeValue(brand: string, model: string, year: number, f
         let finalYearId = null;
         let finalData = null;
 
-        // Take top 5 candidates to avoid excessive API calls
-        const topCandidates = candidates.slice(0, 5);
+        // Take top 10 candidates to avoid excessive API calls but ensure coverage
+        const topCandidates = candidates.slice(0, 10);
+
+        if (topCandidates.length === 0) {
+            console.warn(`[FIPE] No candidates found for ${brand} ${model}`);
+        }
 
         for (const candidate of topCandidates) {
             const modelId = candidate.m.codigo;
@@ -145,9 +168,13 @@ export async function getFipeValue(brand: string, model: string, year: number, f
                     finalData = await finalRes.json();
                     finalModelId = modelId;
                     finalYearId = yearId;
-                    break; // Found the best valid candidate
+                    break;
                 }
             }
+        }
+
+        if (!finalData) {
+            console.warn(`[FIPE] Match failed for: Brand=${brand}, Model=${model}, Year=${year}, Fuel=${fuel}. Evaluated ${topCandidates.length} candidates.`);
         }
 
         return finalData;
