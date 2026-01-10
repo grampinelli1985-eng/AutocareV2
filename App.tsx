@@ -1378,11 +1378,38 @@ const App: React.FC = () => {
     }
   };
 
-  const handleReportSighting = (sightingId: string) => {
-    const updatedReported = [...reportedContent, sightingId];
-    setReportedContent(updatedReported);
-    localStorage.setItem('autocare-reported-content', JSON.stringify(updatedReported));
-    alert("Obrigado por sua denúncia. Para sua segurança e conformidade com as diretrizes da comunidade, este conteúdo foi removido da sua visualização e nossa equipe irá analisá-lo em breve.");
+  const handleReportContent = async (targetId: string, reason: string = 'Inappropriate content') => {
+    if (!session?.user) {
+      alert("Você precisa estar logado para denunciar conteúdo.");
+      return;
+    }
+
+    try {
+      // 1. Database log
+      const { error } = await supabase.from('reports').insert({
+        reporter_id: session.user.id,
+        target_id: targetId,
+        reason: reason,
+        status: 'pending'
+      });
+
+      if (error && error.code !== '42P01') {
+        console.error('Error reporting content:', error);
+      }
+
+      // 2. Local blacklist
+      const updatedReported = [...reportedContent, targetId];
+      setReportedContent(updatedReported);
+      localStorage.setItem('autocare-reported-content', JSON.stringify(updatedReported));
+
+      alert("Denúncia enviada! O conteúdo foi removido da sua visualização e será revisado em até 24h.");
+
+      // Reset view states if they match
+      if (activeCommunityAlert?.vehicle.id === targetId) setActiveCommunityAlert(null);
+      if (activeSightingData?.vehicle.id === targetId) setActiveSightingData(null);
+    } catch (err) {
+      console.error('Reporting failed:', err);
+    }
   };
 
   const handlePlateValidation = (val: string) => {
@@ -1895,14 +1922,23 @@ const App: React.FC = () => {
                 activeCommunityAlert.report.latitude,
                 activeCommunityAlert.report.longitude
               ) <= 100
-          )) ? activeCommunityAlert : null}
+          )) && !reportedContent.includes(activeCommunityAlert.vehicle.id) ? activeCommunityAlert : null}
           onClose={() => setActiveCommunityAlert(null)}
+          onReport={(id) => handleReportContent(id, 'Theft alert report')}
+        />
+
+        <SightingAlertModal
+          isOpen={showSightingAlert && activeSightingData ? !reportedContent.includes(activeSightingData.vehicle.id) : false}
+          onClose={() => setShowSightingAlert(false)}
+          vehicle={activeSightingData?.vehicle || null}
+          sightingData={activeSightingData?.data || null}
+          onReport={(id) => handleReportContent(id, 'In-app sighting report')}
         />
 
         <NotificationCenterModal
           isOpen={showNotifications}
           onClose={() => setShowNotifications(false)}
-          notifications={notifications}
+          notifications={notifications.filter(n => !reportedContent.includes(n.id) && !reportedContent.includes(n.data?.vehicleId))}
           onAction={handleNotificationAction}
         />
 
@@ -2150,7 +2186,7 @@ const App: React.FC = () => {
                                   </a>
                                 )}
                                 <button
-                                  onClick={() => handleReportSighting(s.id)}
+                                  onClick={() => handleReportContent(s.id, 'User sighting report')}
                                   className="text-slate-400 hover:text-red-500 transition-colors p-1"
                                   title="Denunciar e bloquear conteúdo"
                                 >
@@ -2321,29 +2357,9 @@ const App: React.FC = () => {
           location={sightingSuccessData.location}
         />
 
-        <TheftAlertModal
-          alert={activeCommunityAlert}
-          onClose={() => setActiveCommunityAlert(null)}
-          onReport={(id) => {
-            setReportedContent(prev => [...prev, id]);
-            setActiveCommunityAlert(null);
-          }}
-        />
-
         <RecoveryAlertModal
           vehicle={activeRecoveryAlert?.vehicle || null}
           onClose={() => setActiveRecoveryAlert(null)}
-        />
-
-        <SightingAlertModal
-          isOpen={showSightingAlert}
-          onClose={() => setShowSightingAlert(false)}
-          vehicle={activeSightingData?.vehicle || null}
-          sightingData={activeSightingData?.data || null}
-          onReport={(id) => {
-            setReportedContent(prev => [...prev, id]);
-            setShowSightingAlert(false);
-          }}
         />
 
         <MilestoneDetailModal

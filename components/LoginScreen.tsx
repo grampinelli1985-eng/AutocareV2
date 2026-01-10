@@ -259,6 +259,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             )}
           </div>
         )}
+
+        <div className="mt-8 text-center bg-white/10 backdrop-blur-sm py-3 px-6 rounded-2xl border border-white/10">
+          <p className="text-[10px] text-white font-bold tracking-widest uppercase opacity-70 mb-2">Segurança AutoCare</p>
+          <div className="flex items-center justify-center gap-4">
+            <a
+              href="https://sites.google.com/view/politicadeprivacidadeautocare/in%C3%ADcio"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[9px] text-indigo-200 font-black uppercase hover:underline"
+            >
+              Política de Privacidade
+            </a>
+            <span className="w-1 h-1 bg-white/20 rounded-full" />
+            <span className="text-[9px] text-slate-400 font-bold uppercase">Versão 1.0.9</span>
+          </div>
+        </div>
       </div>
     </div>
   );
