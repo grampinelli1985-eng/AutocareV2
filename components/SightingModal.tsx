@@ -21,6 +21,7 @@ export const SightingModal: React.FC<SightingModalProps> = ({
     showManualLocationInput,
     isSightingValidated
 }) => {
+    const [confirmedTruth, setConfirmedTruth] = React.useState(false);
     if (!isOpen) return null;
 
     return (
@@ -73,10 +74,19 @@ export const SightingModal: React.FC<SightingModalProps> = ({
                         </div>
                     )}
 
+                    <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 group cursor-pointer" onClick={() => setConfirmedTruth(!confirmedTruth)}>
+                        <div className={`mt-0.5 shrink-0 w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${confirmedTruth ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-slate-600'}`}>
+                            {confirmedTruth && <Eye size={12} className="text-white" />}
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight leading-tight select-none">
+                            Confirmo que as informações acima são verdadeiras e estou ciente das diretrizes da comunidade.
+                        </p>
+                    </div>
+
                     <button
                         type="submit"
-                        disabled={!isSightingValidated}
-                        className={`w-full py-5 rounded-[24px] font-black text-white flex items-center justify-center gap-2 ${isSightingValidated ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                        disabled={!isSightingValidated || !confirmedTruth}
+                        className={`w-full py-5 rounded-[24px] font-black text-white flex items-center justify-center gap-2 ${isSightingValidated && confirmedTruth ? 'bg-indigo-600 shadow-xl shadow-indigo-200' : 'bg-slate-300'}`}
                     >
                         {showManualLocationInput ? (
                             'Confirmar Localização Manual'

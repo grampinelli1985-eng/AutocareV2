@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, X, Bot, User, Loader2, Sparkles, Crown } from 'lucide-react';
-import { ChatMessage, Vehicle } from '../types';
+import { ChatMessage, Vehicle, ServiceRecord, FuelLog } from '../types';
 import { chatWithGemini } from '../services/geminiService';
 
 interface ChatBotProps {
@@ -12,9 +12,11 @@ interface ChatBotProps {
   questionsRemaining: number;
   onMessageSent: () => void;
   onUpgrade: () => void;
+  records?: ServiceRecord[];
+  fuelLogs?: FuelLog[];
 }
 
-const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, questionsRemaining, onMessageSent, onUpgrade }) => {
+const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, questionsRemaining, onMessageSent, onUpgrade, records = [], fuelLogs = [] }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -46,7 +48,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, q
     setIsTyping(true);
     if (userPlan === 'free') onMessageSent();
 
-    const responseText = await chatWithGemini([...messages, userMsg], vehicle);
+    const responseText = await chatWithGemini([...messages, userMsg], vehicle, records, fuelLogs);
 
     const aiMsg: ChatMessage = {
       role: 'model',

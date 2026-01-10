@@ -1,16 +1,18 @@
 
 import React from 'react';
-import { Siren, Info, X } from 'lucide-react';
+import { Siren, Info, X, Flag } from 'lucide-react';
 import { Vehicle, TheftReport } from '../types';
 
 interface TheftAlertModalProps {
     alert: { vehicle: Vehicle; report: TheftReport } | null;
     onClose: () => void;
+    onReport?: (vehicleId: string) => void;
 }
 
 export const TheftAlertModal: React.FC<TheftAlertModalProps> = ({
     alert,
     onClose,
+    onReport,
 }) => {
     if (!alert) return null;
 
@@ -52,6 +54,18 @@ export const TheftAlertModal: React.FC<TheftAlertModalProps> = ({
                 >
                     Entendido, ficarei de olho
                 </button>
+
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-3">
+                    <button
+                        onClick={() => alert.vehicle.id && onReport?.(alert.vehicle.id)}
+                        className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-red-500 transition-colors"
+                    >
+                        <Flag size={12} /> Denunciar Conteúdo Impróprio
+                    </button>
+                    <p className="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] font-medium leading-relaxed">
+                        App comprometido com diretrizes de segurança da Google Play
+                    </p>
+                </div>
             </div>
         </div>
     );

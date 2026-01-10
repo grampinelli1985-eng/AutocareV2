@@ -18,6 +18,7 @@ import { VehicleDeletionModal } from './components/VehicleDeletionModal';
 import { SightingSuccessModal } from './components/SightingSuccessModal';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { TheftAlertModal } from './components/TheftAlertModal';
+import { LevelTimelineModal } from './components/LevelTimelineModal';
 import { MaintenanceReportModal } from './components/MaintenanceReportModal';
 import { PremiumSubscriptionModal } from './components/PremiumSubscriptionModal';
 import { PaymentSheet } from './components/PaymentSheet';
@@ -117,6 +118,8 @@ const App: React.FC = () => {
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
   const [selectedBrandInModal, setSelectedBrandInModal] = useState<string>('');
   const [showFuelModal, setShowFuelModal] = useState(false);
+  const [showFipeInfo, setShowFipeInfo] = useState(false);
+  const [showLevelModal, setShowLevelModal] = useState(false);
   const [selectedMilestoneDetail, setSelectedMilestoneDetail] = useState<MaintenanceMilestone | null>(null);
   const [selectedCompletedMilestone, setSelectedCompletedMilestone] = useState<MaintenanceMilestone | null>(null);
   const [vehicleToDeleteId, setVehicleToDeleteId] = useState<string | null>(null);
@@ -256,8 +259,8 @@ const App: React.FC = () => {
 
     const titles = [
       'Recém-Chegado', 'Motorista Consciente', 'Guardião do Veículo',
-      'Piloto Eficiente', 'Ninja da Manutenção', 'Estrategista das Ruas',
-      'Líder da Estrada', 'Mestre de Frota', 'Embaixador AutoCare', 'Lenda do Volante'
+      'Piloto Eficiente', 'Ninja da Manutenção', 'Zelador de Elite',
+      'Sentinela Mecânico', 'Inspetor de Elite', 'Embaixador AutoCare', 'Mestre da Longevidade'
     ];
     const title = titles[level - 1] || 'Especialista';
 
@@ -503,7 +506,7 @@ const App: React.FC = () => {
 
       setIsLoading(true);
       const limit = userPlan === 'premium' ? 3 : 1;
-      getSmartMaintenanceAdvice(selectedVehicle, limit).then(data => {
+      getSmartMaintenanceAdvice(selectedVehicle, vehicleRecords, limit).then(data => {
         setAiAnalysis(data);
         setRadarCache(prev => ({
           ...prev,
@@ -528,7 +531,7 @@ const App: React.FC = () => {
       }
 
       setIsFuelAiLoading(true);
-      getFuelEconomyAdvice(selectedVehicle, averageConsumption).then(data => {
+      getFuelEconomyAdvice(selectedVehicle, averageConsumption, vehicleFuelLogs).then(data => {
         setAiFuelAdvice(data);
         setFuelAdviceCache(prev => ({
           ...prev,
@@ -777,14 +780,18 @@ const App: React.FC = () => {
       const { default: html2canvas } = await import('html2canvas');
       const { jsPDF } = await import('jspdf');
 
+      // Temporarily expand container to show all content for capture
       const originalStyle = reportContainer.getAttribute('style') || '';
       reportContainer.style.height = 'auto';
+      reportContainer.style.maxHeight = 'none';
       reportContainer.style.overflow = 'visible';
       reportContainer.style.width = '800px';
-      reportContainer.style.position = 'relative';
 
       // Select all chunks to print
       const chunks = Array.from(reportContainer.querySelectorAll('.print-chunk')) as HTMLElement[];
+      if (chunks.length === 0) {
+        throw new Error("Nenhum conteúdo encontrado para imprimir. Verifique se os registros estão visíveis.");
+      }
 
       const pdf = new jsPDF({
         orientation: 'p',
@@ -795,43 +802,54 @@ const App: React.FC = () => {
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      const margin = 10; // 10mm margin
+      const margin = 10;
       const printableWidth = pdfWidth - (margin * 2);
-      const printableHeight = pdfHeight - (margin * 2);
 
       let currentY = margin;
       let isFirstPage = true;
 
       for (const chunk of chunks) {
-        // Prepare chunk for capture (handle potential transparency/styles)
+        // Prepare chunk for capture with higher scale for premium quality
         const canvas = await html2canvas(chunk, {
-          scale: 2,
+          scale: 3,
           useCORS: true,
+          allowTaint: true,
           backgroundColor: '#ffffff',
-          logging: false
+          logging: false,
+          windowWidth: reportContainer.offsetWidth,
+          onclone: (clonedDoc) => {
+            const clonedChunk = clonedDoc.getElementById(chunk.id) || clonedDoc.querySelector(`[data-chunk-id="${chunk.id}"]`);
+            if (clonedChunk instanceof HTMLElement) {
+              clonedChunk.style.overflow = 'visible';
+              clonedChunk.style.boxShadow = 'none'; // Remove shadows for cleaner print
+            }
+          }
         });
 
-        const imgData = canvas.toDataURL('image/png');
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const imgProps = pdf.getImageProperties(imgData);
         const imgHeight = (imgProps.height * printableWidth) / imgProps.width;
 
-        // Check if we need a new page
-        if (!isFirstPage && (currentY + imgHeight > pdfHeight - margin)) {
+        // Check if we need a new page (with safety buffer)
+        if (!isFirstPage && (currentY + imgHeight > pdfHeight - margin - 5)) {
           pdf.addPage();
           currentY = margin;
+
+          // Add a small header/decoration on subsequent pages if desired
+          // pdf.setFillColor(79, 70, 229); // Indigo-600
+          // pdf.rect(margin, 2, printableWidth, 2, 'F');
         }
 
-        pdf.addImage(imgData, 'PNG', margin, currentY, printableWidth, imgHeight);
-        currentY += imgHeight;
+        pdf.addImage(imgData, 'JPEG', margin, currentY, printableWidth, imgHeight);
+        currentY += imgHeight + 4; // Add a small gap between chunks
         isFirstPage = false;
       }
 
       reportContainer.setAttribute('style', originalStyle);
       pdf.save(`AutoCare_Relatorio_${selectedVehicle?.plate || 'Manutencao'}.pdf`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Falha ao gerar PDF:', error);
-      alert('Erro ao gerar o arquivo. Tente novamente.');
+      alert(`⚠️ Erro ao gerar o arquivo: ${error.message || 'Erro deconhecido'}. \n\nDica: Verifique se você tem permissão de armazenamento e se todas as imagens carregaram.`);
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -1525,6 +1543,14 @@ const App: React.FC = () => {
           onUpgrade={handleUpgradeToPremiumTrigger}
         />
 
+        {showLevelModal && (
+          <LevelTimelineModal
+            currentLevel={performanceScore.level}
+            currentTitle={performanceScore.title}
+            onClose={() => setShowLevelModal(false)}
+          />
+        )}
+
         <PaymentSheet
           isOpen={showPaymentSheet}
           onClose={() => setShowPaymentSheet(false)}
@@ -1560,6 +1586,8 @@ const App: React.FC = () => {
           questionsRemaining={aiQuestionsRemaining}
           onMessageSent={handleChatMessageSent}
           onUpgrade={() => setShowSubscriptionModal(true)}
+          records={vehicleRecords}
+          fuelLogs={vehicleFuelLogs}
         />
 
         {/* DASHBOARD TAB */}
@@ -1608,6 +1636,7 @@ const App: React.FC = () => {
                     averageConsumption={averageConsumption}
                     showModal={showPerformanceModal}
                     setShowModal={setShowPerformanceModal}
+                    onLevelClick={() => setShowLevelModal(true)}
                   />
 
                   <FipeCard
@@ -1676,9 +1705,23 @@ const App: React.FC = () => {
         {/* THEFT TAB */}
         {activeTab === 'theft' && (
           <div className="space-y-6 animate-tab-fade">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Comunidade</h2>
-              <p className="text-xs text-slate-500 font-medium">Alertas ativos e rede de proteção.</p>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Comunidade</h2>
+                <p className="text-xs text-slate-500 font-medium">Alertas ativos e rede de proteção.</p>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 p-4 rounded-3xl flex gap-3 items-start animate-pulse">
+                <div className="bg-amber-100 dark:bg-amber-900/50 p-2 rounded-xl text-amber-600 shrink-0">
+                  <MapPin size={20} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest leading-none">Divulgação de Localização</p>
+                  <p className="text-[9px] text-amber-700/80 dark:text-amber-500/80 leading-snug font-medium">
+                    Este aplicativo utiliza dados de localização em segundo plano para permitir o recebimento de alertas de furtos próximos a você ({userPlan === 'free' ? 'raio de 100km' : 'Alcance Nacional'}). Sua localização é processada de forma anônima e não é compartilhada com terceiros para fins publicitários.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -1760,6 +1803,13 @@ const App: React.FC = () => {
                     <Crown size={16} fill="currentColor" />
                   </div>
                 )}
+                {/* Level Badge in Profile */}
+                <button
+                  onClick={() => setShowLevelModal(true)}
+                  className="absolute -bottom-2 -right-3 bg-indigo-600 text-white px-2.5 py-1 rounded-xl font-black text-[9px] shadow-lg border-2 border-white dark:border-slate-900 transition-all active:scale-90"
+                >
+                  LVL {performanceScore.level}
+                </button>
               </div>
               <h3 className="font-bold text-lg dark:text-white">{session?.user?.email || 'Motorista AutoCare'}</h3>
               <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full uppercase text-[10px] font-black tracking-wider ${userPlan === 'premium'

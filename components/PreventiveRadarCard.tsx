@@ -24,7 +24,13 @@ export const PreventiveRadarCard: React.FC<PreventiveRadarCardProps> = ({
             <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-bold">Radar Preventivo IA</h3>
                 {userPlan === 'premium' ? (
-                    <Crown size={20} className="text-amber-400" />
+                    <div className="flex items-center gap-2">
+                        <div className="bg-white/10 px-2 py-1 rounded-lg flex items-center gap-1 border border-white/5 animate-pulse">
+                            <span className="w-1 h-1 bg-emerald-400 rounded-full" />
+                            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-100">Memory Active</span>
+                        </div>
+                        <Crown size={20} className="text-amber-400" />
+                    </div>
                 ) : (
                     <ShieldCheck size={20} className="text-white/40" />
                 )}

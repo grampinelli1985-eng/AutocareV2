@@ -14,13 +14,15 @@ interface PerformanceCardProps {
     averageConsumption: string | null;
     showModal: boolean;
     setShowModal: (show: boolean) => void;
+    onLevelClick?: () => void;
 }
 
 export const PerformanceCard: React.FC<PerformanceCardProps> = ({
     score,
     averageConsumption,
     showModal,
-    setShowModal
+    setShowModal,
+    onLevelClick
 }) => {
     return (
         <>
@@ -35,9 +37,15 @@ export const PerformanceCard: React.FC<PerformanceCardProps> = ({
                         </div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{score.title}</p>
                     </div>
-                    <div className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl font-black text-[10px] shadow-lg shadow-indigo-200 dark:shadow-none">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onLevelClick?.();
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl font-black text-[10px] shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95"
+                    >
                         LVL {score.level}
-                    </div>
+                    </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

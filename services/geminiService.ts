@@ -1,10 +1,10 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { Vehicle, ChatMessage, FuelLog } from "../types";
+import { Vehicle, ChatMessage, FuelLog, ServiceRecord } from "../types";
 
 const genAI = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
 
-export async function getSmartMaintenanceAdvice(vehicle: Vehicle, limit: number = 3) {
+export async function getSmartMaintenanceAdvice(vehicle: Vehicle, records: ServiceRecord[] = [], limit: number = 3) {
   try {
     const prompt = `
       Aja como um especialista em mecânica automotiva. 
@@ -29,7 +29,15 @@ export async function getSmartMaintenanceAdvice(vehicle: Vehicle, limit: number 
         ]
       }
       Urgências permitidas: "low", "medium", "high".
-      O score deve ser um número inteiro de 0 a 100 representando a saúde geral baseada na km.
+      DIRETRIZ DE MEMÓRIA DO VEÍCULO (PREMIUM):
+      ${records.length > 0 ? `
+      Aqui estão os registros de manutenção passados para análise de recorrência:
+      ${records.map(r => `- ${r.date}: ${r.taskTitle} (${r.mileage}km) - ${r.notes}`).join('\n')}
+      
+      Se houver manutenções muito frequentes para o mesmo componente, mencione como um possível desgaste prematuro ou problema recorrente (Vehicle Memory).
+      ` : 'Não há registros de manutenção passados.'}
+
+      O score deve ser um número inteiro de 0 a 100 representando a saúde geral baseada na km e no histórico.
     `;
 
     const response = await genAI.models.generateContent({
@@ -68,7 +76,7 @@ export async function getSmartMaintenanceAdvice(vehicle: Vehicle, limit: number 
   }
 }
 
-export async function chatWithGemini(messages: ChatMessage[], vehicle: Vehicle | null) {
+export async function chatWithGemini(messages: ChatMessage[], vehicle: Vehicle | null, records: ServiceRecord[] = [], fuelLogs: FuelLog[] = []) {
   try {
     const systemInstruction = `
       Você é o Assistente Especialista da AutoCare, um especialista em manutenção automotiva brasileira.
@@ -82,6 +90,12 @@ export async function chatWithGemini(messages: ChatMessage[], vehicle: Vehicle |
       4. Nunca incentive o usuário a fazer reparos perigosos sozinho.
       5. Seja assertivo sobre a tecnologia do motor: Diferencie CORRENTE DE COMANDO de CORREIA DENTADA. Se o carro usa corrente (comum em Toyota, Honda, Jeep novos), explique que ela é feita para durar a vida útil do motor.
       6. Use termos brasileiros (ex: "correia dentada", "pastilha de freio", "fluido de arrefecimento").
+
+      DIRETRIZ DE MEMÓRIA DO VEÍCULO (PREMIUM):
+      ${vehicle && records.length > 0 ? `Histórico de Manutenção: ${records.slice(0, 5).map(r => `${r.taskTitle} em ${r.date}`).join(', ')}.` : ''}
+      ${vehicle && fuelLogs.length > 0 ? `Padrão de Consumo Recente: ${fuelLogs.slice(0, 3).map(f => `${f.fuelType}: ${f.liters}L`).join(', ')}.` : ''}
+      
+      Se o usuário perguntar algo que já foi registrado ou perguntado antes (baseado no histórico fornecido), use a "Vehicle Memory" para dar uma resposta contextualizada. Exemplo: "Este é o terceiro registro de dúvidas sobre este barulho em 12 meses..."
     `;
 
     const lastMessage = messages[messages.length - 1].text;
@@ -117,7 +131,7 @@ export async function chatWithGemini(messages: ChatMessage[], vehicle: Vehicle |
   }
 }
 
-export async function getFuelEconomyAdvice(vehicle: Vehicle, averageKmL: string | null) {
+export async function getFuelEconomyAdvice(vehicle: Vehicle, averageKmL: string | null, fuelLogs: FuelLog[] = []) {
   try {
     const prompt = `
       Aja como um engenheiro automotivo especialista em consumo de combustível.
@@ -127,6 +141,13 @@ export async function getFuelEconomyAdvice(vehicle: Vehicle, averageKmL: string 
       Forneça 3 dicas EXTREMAMENTE CURTAS E DIRETAS (máximo 80 caracteres cada) para melhorar a eficiência deste modelo específico.
       Se o consumo estiver alto para o padrão do carro, mencione possíveis causas (velas, sensores, pneus).
       Se não houver consumo registrado, foque em como este modelo costuma se comportar e dicas genéricas de condução econômica.
+
+      DIRETRIZ DE MEMÓRIA DO VEÍCULO (PREMIUM):
+      ${fuelLogs.length > 0 ? `
+      Logs de combustível recentes:
+      ${fuelLogs.slice(0, 5).map(f => `- ${f.date}: ${f.mileage}km, ${f.liters}L de ${f.fuelType}`).join('\n')}
+      Analise se o consumo está piorando ao longo do tempo ou se o estilo de uso parece variar (estrada vs cidade).
+      ` : ''}
 
       A resposta DEVE ser um objeto JSON válido.
       Exemplo:
