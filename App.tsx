@@ -56,6 +56,7 @@ interface NotificationItem {
   date: string;
   isRead: boolean;
   mapUrl?: string;
+  data?: any;
 }
 
 const BRAZILIAN_STATES = [
@@ -503,7 +504,8 @@ const App: React.FC = () => {
             title: n.title,
             message: n.message,
             date: n.created_at,
-            isRead: n.is_read
+            isRead: n.is_read,
+            data: n.data
           }));
           setNotifications(mappedNotifs);
         }
@@ -588,7 +590,8 @@ const App: React.FC = () => {
           title: newNotif.title,
           message: newNotif.message,
           date: newNotif.created_at,
-          isRead: newNotif.is_read
+          isRead: newNotif.is_read,
+          data: newNotif.data
         }, ...prev]);
 
         // Vibration or Alert sound could go here if native
@@ -680,6 +683,17 @@ const App: React.FC = () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     if (session?.user) {
       await supabase.from('notifications').update({ is_read: true }).eq('user_id', session.user.id);
+    }
+  };
+
+  const handleNotificationAction = (notification: NotificationItem) => {
+    if (notification.type === 'theft') {
+      const vehicleId = notification.data?.vehicleId;
+      if (vehicleId) {
+        setSightingVehicleId(vehicleId);
+        setShowSightingModal(true);
+        setShowNotifications(false);
+      }
     }
   };
 
@@ -1637,6 +1651,7 @@ const App: React.FC = () => {
           isOpen={showNotifications}
           onClose={() => setShowNotifications(false)}
           notifications={notifications}
+          onAction={handleNotificationAction}
         />
 
         <MaintenanceReportModal

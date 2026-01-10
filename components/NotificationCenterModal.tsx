@@ -10,18 +10,21 @@ interface NotificationItem {
     date: string;
     isRead: boolean;
     mapUrl?: string;
+    data?: any;
 }
 
 interface NotificationCenterModalProps {
     isOpen: boolean;
     onClose: () => void;
     notifications: NotificationItem[];
+    onAction?: (notification: NotificationItem) => void;
 }
 
 export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = ({
     isOpen,
     onClose,
     notifications,
+    onAction,
 }) => {
     if (!isOpen) return null;
 
@@ -38,7 +41,11 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                     {notifications.length > 0 ? (
                         notifications.map(n => (
-                            <div key={n.id} className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex gap-4 transition-all hover:bg-white dark:hover:bg-slate-800">
+                            <div
+                                key={n.id}
+                                className={`p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex gap-4 transition-all hover:bg-white dark:hover:bg-slate-800 ${n.type === 'theft' ? 'cursor-pointer hover:border-red-200 dark:hover:border-red-900/30' : ''}`}
+                                onClick={() => n.type === 'theft' && onAction?.(n)}
+                            >
                                 <div className={`mt-1 shrink-0 w-2 h-2 rounded-full ${n.type === 'theft' ? 'bg-red-500 animate-pulse' : n.type === 'maintenance' ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
                                 <div className="space-y-1 flex-1">
                                     <div className="flex justify-between items-start">
@@ -49,6 +56,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase tracking-tighter hover:underline"
+                                                onClick={(e) => e.stopPropagation()}
                                             >
                                                 <ExternalLink size={10} />
                                                 Ver no Mapa
@@ -56,6 +64,17 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                                         )}
                                     </div>
                                     <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-snug">{n.message}</p>
+
+                                    {n.type === 'theft' && (
+                                        <div className="pt-2">
+                                            <button
+                                                className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                                            >
+                                                Relatar Avistamento
+                                            </button>
+                                        </div>
+                                    )}
+
                                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest pt-1">{new Date(n.date).toLocaleDateString()} {new Date(n.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                             </div>
