@@ -16,6 +16,7 @@ import { RecoveryAlertModal } from './components/RecoveryAlertModal';
 import { ServiceRegistrationModal } from './components/ServiceRegistrationModal';
 import { VehicleDeletionModal } from './components/VehicleDeletionModal';
 import { SightingSuccessModal } from './components/SightingSuccessModal';
+import { SightingAlertModal } from './components/SightingAlertModal';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { TheftAlertModal } from './components/TheftAlertModal';
 import { LevelTimelineModal } from './components/LevelTimelineModal';
@@ -50,7 +51,7 @@ type Theme = 'light' | 'dark' | 'system';
 
 interface NotificationItem {
   id: string;
-  type: 'theft' | 'maintenance' | 'info' | 'recovery';
+  type: 'theft' | 'maintenance' | 'info' | 'recovery' | 'sighting';
   title: string;
   message: string;
   date: string;
@@ -147,6 +148,8 @@ const App: React.FC = () => {
   const [vehicleToRecoverId, setVehicleToRecoverId] = useState<string | null>(null);
   const [activeRecoveryAlert, setActiveRecoveryAlert] = useState<{ vehicle: Vehicle } | null>(null);
   const [showSightingSuccess, setShowSightingSuccess] = useState(false);
+  const [showSightingAlert, setShowSightingAlert] = useState(false);
+  const [activeSightingData, setActiveSightingData] = useState<{ vehicle: Vehicle, data: any } | null>(null);
   const [sightingSuccessData, setSightingSuccessData] = useState({ vehicleName: '', location: '' });
   const [newSightingAlert, setNewSightingAlert] = useState<{ vehicle: Vehicle, mapUrl: string } | null>(null);
   const [showKmReminderModal, setShowKmReminderModal] = useState(false);
@@ -653,6 +656,23 @@ const App: React.FC = () => {
           }
         }
 
+        // Se for recuperação
+        if (newNotif.type === 'recovery' && newNotif.data?.vehicleId) {
+          const { data: vData } = await supabase.from('vehicles').select('*').eq('id', newNotif.data.vehicleId).single();
+          if (vData) {
+            setActiveRecoveryAlert({ vehicle: vData });
+          }
+        }
+
+        // Se for avistamento (para o dono)
+        if (newNotif.type === 'sighting' && newNotif.data?.vehicleId) {
+          const vData = vehicles.find(v => v.id === newNotif.data.vehicleId);
+          if (vData) {
+            setActiveSightingData({ vehicle: vData, data: newNotif.data });
+            setShowSightingAlert(true);
+          }
+        }
+
         setNotifications(prev => [newNotif, ...prev]);
         // ... notify logic ...
 
@@ -663,7 +683,7 @@ const App: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isLoggedIn, session]);
+  }, [isLoggedIn, session, vehicles]);
 
   useEffect(() => {
     if (selectedVehicle && isLoggedIn) {
@@ -749,8 +769,19 @@ const App: React.FC = () => {
   };
 
   const handleNotificationAction = (notification: NotificationItem) => {
+    const vehicleId = notification.data?.vehicleId;
+
+    if (notification.type === 'sighting') {
+      const vData = vehicles.find(v => v.id === vehicleId);
+      if (vData) {
+        setActiveSightingData({ vehicle: vData, data: notification.data });
+        setShowSightingAlert(true);
+        setShowNotifications(false);
+      }
+      return;
+    }
+
     if (notification.type === 'theft') {
-      const vehicleId = notification.data?.vehicleId;
       let plate = notification.data?.plate;
 
       // Fallback: Tenta extrair a placa da mensagem usando Regex se não houver no data
@@ -1986,7 +2017,7 @@ const App: React.FC = () => {
 
         {/* THEFT TAB */}
         {activeTab === 'theft' && (
-          <div className="space-y-6 animate-tab-fade">
+          <div className="space-y-4 animate-tab-fade">
             <div className="space-y-4">
               <div className="flex flex-col gap-1">
                 <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Comunidade</h2>
@@ -2218,6 +2249,17 @@ const App: React.FC = () => {
         <RecoveryAlertModal
           vehicle={activeRecoveryAlert?.vehicle || null}
           onClose={() => setActiveRecoveryAlert(null)}
+        />
+
+        <SightingAlertModal
+          isOpen={showSightingAlert}
+          onClose={() => setShowSightingAlert(false)}
+          vehicle={activeSightingData?.vehicle || null}
+          sightingData={activeSightingData?.data || null}
+          onReport={(id) => {
+            setReportedContent(prev => [...prev, id]);
+            setShowSightingAlert(false);
+          }}
         />
 
         <MilestoneDetailModal

@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { X, Bell, ExternalLink } from 'lucide-react';
+import { X, Bell, ExternalLink, Navigation, Flag } from 'lucide-react';
 
 interface NotificationItem {
     id: string;
-    type: 'theft' | 'maintenance' | 'info';
+    type: 'theft' | 'maintenance' | 'info' | 'sighting' | 'recovery';
     title: string;
     message: string;
     date: string;
@@ -69,8 +69,33 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                                         <div className="pt-2">
                                             <button
                                                 className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                                                onClick={(e) => { e.stopPropagation(); onAction?.(n); }}
                                             >
                                                 Relatar Avistamento
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {n.type === 'sighting' && (
+                                        <div className="pt-2 flex gap-2">
+                                            {n.mapUrl && (
+                                                <a
+                                                    href={n.mapUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-1.5"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <Navigation size={10} />
+                                                    Ver no Mapa
+                                                </a>
+                                            )}
+                                            <button
+                                                className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center gap-1.5"
+                                                onClick={(e) => { e.stopPropagation(); onAction?.(n); }}
+                                            >
+                                                <Flag size={10} />
+                                                Denunciar
                                             </button>
                                         </div>
                                     )}
