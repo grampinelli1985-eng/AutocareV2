@@ -501,16 +501,33 @@ const App: React.FC = () => {
           .order('created_at', { ascending: false });
 
         if (!nError && nData) {
-          const mappedNotifs = nData.map((n: any) => ({
-            id: n.id,
-            type: n.type,
-            title: n.title,
-            message: n.message,
-            date: n.created_at,
+          const mapped = nData.map((n: any) => ({
+            ...n,
             isRead: n.is_read,
-            data: n.data
+            date: n.created_at,
+            mapUrl: n.map_url || n.data?.mapUrl // Suporte a campos legados
           }));
-          setNotifications(mappedNotifs);
+          setNotifications(mapped);
+
+          // Pré-carregamento de placas para alertas de roubo
+          const theftNotifs = mapped.filter((n: any) => n.type === 'theft' && n.data?.vehicleId && !n.data?.plate);
+          if (theftNotifs.length > 0) {
+            const vehicleIds = [...new Set(theftNotifs.map((n: any) => n.data.vehicleId))];
+            const { data: vData } = await supabase
+              .from('vehicles')
+              .select('id, plate')
+              .in('id', vehicleIds);
+
+            if (vData) {
+              setNotifications(prev => prev.map(n => {
+                if (n.type === 'theft' && n.data?.vehicleId) {
+                  const match = vData.find(v => v.id === n.data.vehicleId);
+                  if (match) return { ...n, data: { ...n.data, plate: match.plate } };
+                }
+                return n;
+              }));
+            }
+          }
         }
       } catch (err) {
         console.error('Error synchronizing data with Supabase:', err);
@@ -585,17 +602,34 @@ const App: React.FC = () => {
         schema: 'public',
         table: 'notifications',
         filter: `user_id=eq.${session.user.id}`
-      }, (payload) => {
-        const newNotif = payload.new as any;
-        setNotifications(prev => [{
-          id: newNotif.id,
-          type: newNotif.type,
-          title: newNotif.title,
-          message: newNotif.message,
-          date: newNotif.created_at,
-          isRead: newNotif.is_read,
-          data: newNotif.data
-        }, ...prev]);
+      }, async (payload) => { // Added async here
+        const newNotif: NotificationItem = {
+          ...payload.new,
+          id: payload.new.id,
+          type: payload.new.type,
+          title: payload.new.title,
+          message: payload.new.message,
+          date: payload.new.created_at,
+          isRead: payload.new.is_read,
+          data: payload.new.data
+        };
+
+        // Se for roubo e não tiver a placa, tenta buscar na hora
+        if (newNotif.type === 'theft' && newNotif.data?.vehicleId && !newNotif.data?.plate) {
+          const { data: vData, error: vPlateError } = await supabase
+            .from('vehicles')
+            .select('plate')
+            .eq('id', newNotif.data.vehicleId)
+            .single();
+          if (vPlateError) {
+            console.error('Error fetching plate for real-time theft notification:', vPlateError);
+          } else if (vData) {
+            newNotif.data.plate = vData.plate;
+          }
+        }
+
+        setNotifications(prev => [newNotif, ...prev]);
+        // ... notify logic ...
 
         // Vibration or Alert sound could go here if native
       })
@@ -1251,7 +1285,16 @@ const App: React.FC = () => {
       // Se ainda não temos a placa (buscando do banco), avisamos o usuário
       if (!targetPlate) {
         setIsSightingValidated(false);
-        setSightingError("Sincronizando dados... (Aguarde)");
+        setSightingError("Erro: Não foi possível obter dados da placa. Verifique sua conexão.");
+
+        // Tenta um "último esforço" de busca se ainda tiver no modal
+        if (sightingVehicleId) {
+          const retry = async () => {
+            const { data } = await supabase.from('vehicles').select('plate').eq('id', sightingVehicleId).single();
+            if (data) setSightingVehiclePlate(data.plate);
+          };
+          retry();
+        }
         return;
       }
 
