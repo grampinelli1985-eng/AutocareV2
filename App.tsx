@@ -663,9 +663,23 @@ const App: React.FC = () => {
 
         // Se for avistamento (para o dono)
         if (newNotif.type === 'sighting' && newNotif.data?.vehicleId) {
-          const vData = vehicles.find(v => v.id === newNotif.data.vehicleId);
+          const { data: vData } = await supabase.from('vehicles').select('*').eq('id', newNotif.data.vehicleId).single();
           if (vData) {
-            setActiveSightingData({ vehicle: vData, data: newNotif.data });
+            const mappedV = {
+              ...vData,
+              currentMileage: vData.current_mileage,
+              isStolen: vData.is_stolen,
+              theftReport: vData.theft_report
+            };
+
+            // Garante que o sightingData tenha o que o modal precisa
+            const sData = {
+              location: newNotif.data.location || 'Localização não informada',
+              description: newNotif.data.description || '',
+              mapUrl: newNotif.data.mapUrl || newNotif.mapUrl
+            };
+
+            setActiveSightingData({ vehicle: mappedV, data: sData });
             setShowSightingAlert(true);
           }
         }
@@ -769,12 +783,39 @@ const App: React.FC = () => {
     const vehicleId = notification.data?.vehicleId;
 
     if (notification.type === 'sighting') {
-      const vData = vehicles.find(v => v.id === vehicleId);
-      if (vData) {
-        setActiveSightingData({ vehicle: vData, data: notification.data });
-        setShowSightingAlert(true);
-        setShowNotifications(false);
-      }
+      const vId = notification.data?.vehicleId;
+      if (!vId) return;
+
+      const triggerModal = async () => {
+        // Tenta pegar do state local primeiro para agilidade
+        let vData = vehicles.find(v => v.id === vId);
+
+        // Se não achar (ex: recém carregado), busca no Supabase
+        if (!vData) {
+          const { data: dbData } = await supabase.from('vehicles').select('*').eq('id', vId).single();
+          if (dbData) {
+            vData = {
+              ...dbData,
+              currentMileage: dbData.current_mileage,
+              isStolen: dbData.is_stolen,
+              theftReport: dbData.theft_report
+            };
+          }
+        }
+
+        if (vData) {
+          const sData = {
+            location: notification.data?.location || 'Localização não informada',
+            description: notification.data?.description || '',
+            mapUrl: notification.data?.mapUrl || notification.mapUrl
+          };
+          setActiveSightingData({ vehicle: vData, data: sData });
+          setShowSightingAlert(true);
+          setShowNotifications(false);
+        }
+      };
+
+      triggerModal();
       return;
     }
 
