@@ -1,4 +1,4 @@
-// Force deploy: 2026-01-06T21:43:00-03:00
+// Force deploy: 2026-01-11T10:25:00-03:00 - Versão Corrigida com Firebase
 import React, { useState, useEffect, useMemo } from 'react';
 import { PlusCircle, ChevronRight, Trash2, Car as CarIcon, PenTool, Eye, ShieldCheck, FileText, Lock, Loader2, Sparkles, AlertTriangle, Download, ShieldAlert, Trophy, MapPinned, MapPin, Navigation, Flag, Crown } from 'lucide-react';
 import Layout from './components/Layout';
@@ -289,7 +289,7 @@ const App: React.FC = () => {
   }, [selectedVehicle, averageConsumption, milestones, aiAnalysis]);
 
   const unreadNotificationsCount = useMemo(() =>
-    notifications.filter(n => !n.isRead).length
+    notifications.filter(n => n && !n.isRead).length
     , [notifications]);
 
   useEffect(() => {
@@ -322,16 +322,19 @@ const App: React.FC = () => {
       if (Capacitor.getPlatform() === 'android') {
         try {
           await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
-          // Note: VITE_REVENUECAT_ANDROID_API_KEY should be set in .env.local
           const apiKey = import.meta.env.VITE_REVENUECAT_ANDROID_API_KEY;
-          await Purchases.configure({ apiKey });
-          console.log('RevenueCat configured successfully');
+          if (apiKey) {
+            await Purchases.configure({ apiKey });
+            console.log('RevenueCat configured successfully');
+          } else {
+            console.warn('RevenueCat API Key is missing');
+          }
         } catch (e) {
-          console.error('RevenueCat configuration error:', e);
+          console.error('RevenueCat configuration error (handled):', e);
         }
       }
     };
-    initPurchases();
+    initPurchases().catch(err => console.error('initPurchases unhandled error:', err));
   }, []);
 
   useEffect(() => {
@@ -575,28 +578,37 @@ const App: React.FC = () => {
     const platform = Capacitor.getPlatform();
     if (isLoggedIn && session?.user && (platform === 'android' || platform === 'ios')) {
       const setupPush = async () => {
-        let perm = await PushNotifications.checkPermissions();
-        if (perm.receive === 'prompt') {
-          perm = await PushNotifications.requestPermissions();
-        }
+        try {
+          let perm = await PushNotifications.checkPermissions();
+          if (perm.receive === 'prompt') {
+            perm = await PushNotifications.requestPermissions();
+          }
 
-        if (perm.receive === 'granted') {
-          await PushNotifications.register();
-        }
-
-        PushNotifications.addListener('registration', async ({ value: token }) => {
-          await supabase.from('profiles').update({ push_token: token }).eq('id', session.user.id);
-        });
-
-        PushNotifications.addListener('pushNotificationReceived', (notification) => {
-          addNotification({
-            type: 'info',
-            title: notification.title || 'Nova Notificação',
-            message: notification.body || ''
+          PushNotifications.addListener('registrationError', (error: any) => {
+            console.error('Push registration error (handled):', error);
           });
-        });
+
+          PushNotifications.addListener('registration', async ({ value: token }) => {
+            console.log('Push registration success:', token);
+            await supabase.from('profiles').update({ push_token: token }).eq('id', session.user.id);
+          });
+
+          PushNotifications.addListener('pushNotificationReceived', (notification) => {
+            addNotification({
+              type: 'info',
+              title: notification.title || 'Nova Notificação',
+              message: notification.body || ''
+            });
+          });
+
+          if (perm.receive === 'granted') {
+            await PushNotifications.register();
+          }
+        } catch (e) {
+          console.error('Push Notifications setup error (handled):', e);
+        }
       };
-      setupPush();
+      setupPush().catch(err => console.error('setupPush unhandled error:', err));
     }
   }, [isLoggedIn, session]);
 
@@ -1915,15 +1927,15 @@ const App: React.FC = () => {
 
         {/* POP-UP ALERTA COMUNITÁRIO (DINÂMICO PELO PLANO DO EMISSOR) */}
         <TheftAlertModal
-          alert={activeCommunityAlert && (activeCommunityAlert.report.reporterPlan === 'premium' || (
-            !activeCommunityAlert.report.latitude || !vehicles[0]?.lastKnownLat ? true :
+          alert={activeCommunityAlert && (activeCommunityAlert.report?.reporterPlan === 'premium' || (
+            !activeCommunityAlert.report?.latitude || !vehicles[0]?.lastKnownLat ? true :
               calculateDistance(
                 vehicles[0]?.lastKnownLat || 0,
                 vehicles[0]?.lastKnownLng || 0,
                 activeCommunityAlert.report.latitude,
                 activeCommunityAlert.report.longitude
               ) <= 100
-          )) && !reportedContent.includes(activeCommunityAlert.vehicle.id) ? activeCommunityAlert : null}
+          )) && !reportedContent.includes(activeCommunityAlert.vehicle?.id) ? activeCommunityAlert : null}
           onClose={() => setActiveCommunityAlert(null)}
           onReport={(id) => handleReportContent(id, 'Theft alert report')}
         />
@@ -2496,8 +2508,8 @@ const App: React.FC = () => {
           isOpen={showKmReminderModal}
           onClose={() => setShowKmReminderModal(false)}
         />
-      </div >
-    </Layout >
+      </div>
+    </Layout>
   );
 };
 

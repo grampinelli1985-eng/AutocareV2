@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "573057730514",
+        "project_id": "autocareia",
+        "storage_bucket": "autocareia.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:573057730514:android:bd60f38b023fe720132a0b",
+                "android_client_info": {
+                    "package_name": "com.autocareia"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyB2ZdTMjG98UaoPitXlWVU02aVWk9MNkx8"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}
