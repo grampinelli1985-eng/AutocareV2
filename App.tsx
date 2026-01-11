@@ -33,6 +33,7 @@ import { AccountDeletionModal } from './components/AccountDeletionModal';
 import { RecoveryConfirmationModal } from './components/RecoveryConfirmationModal';
 import { FuelConsumptionCard } from './components/FuelConsumptionCard';
 import { PreventiveRadarCard } from './components/PreventiveRadarCard';
+import { LocationDisclosureModal } from './components/LocationDisclosureModal';
 import { KmReminderModal } from './components/KmReminderModal';
 import { Vehicle, MaintenanceTask, ServiceRecord, TheftReport, MaintenanceMilestone, MaintenancePriority, TheftSighting, FuelLog } from './types';
 import { getSmartMaintenanceAdvice, getFuelEconomyAdvice, analyzeInvoice } from './services/geminiService';
@@ -68,7 +69,8 @@ const BRAZILIAN_STATES = [
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isTermsAccepted, setIsTermsAccepted] = useState(false);
+  const [isTermsAccepted, setIsTermsAccepted] = useState(() => localStorage.getItem('autocare-terms-accepted') === 'true');
+  const [isLocationAccepted, setIsLocationAccepted] = useState(() => localStorage.getItem('autocare-location-accepted') === 'true');
   const [userPlan, setUserPlan] = useState<'free' | 'premium'>('free');
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -552,7 +554,7 @@ const App: React.FC = () => {
   }, [isLoggedIn, session]);
 
   useEffect(() => {
-    if (isLoggedIn && session?.user) {
+    if (isLoggedIn && session?.user && isLocationAccepted) {
       const syncLocation = async () => {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(async (pos) => {
@@ -565,10 +567,9 @@ const App: React.FC = () => {
         }
       };
       syncLocation();
-      const interval = setInterval(syncLocation, 1000 * 60 * 15); // Sync every 15 mins
-      return () => clearInterval(interval);
+      // REMOVED BACKGROUND INTERVAL TO COMPLY WITH PLAY STORE POLICIES
     }
-  }, [isLoggedIn, session]);
+  }, [isLoggedIn, session, isLocationAccepted]);
 
   useEffect(() => {
     const platform = Capacitor.getPlatform();
@@ -1158,23 +1159,23 @@ const App: React.FC = () => {
       pdf.save(`AutoCare_Relatorio_${selectedVehicle?.plate || 'Manutencao'}.pdf`);
     } catch (error: any) {
       console.error('Falha ao gerar PDF:', error);
-      alert(`⚠️ Erro ao gerar o arquivo: ${error.message || 'Erro deconhecido'}. \n\nDica: Verifique se você tem permissão de armazenamento e se todas as imagens carregaram.`);
+      alert(`⚠️ Erro ao gerar o arquivo: ${error.message || 'Erro desconhecido'}. \n\nDica: Verifique se você tem permissão de armazenamento e se todas as imagens carregaram.`);
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
-  const acceptTerms = async () => {
+  const acceptTerms = () => {
     setIsTermsAccepted(true);
-    if (session?.user) {
-      await supabase
-        .from('profiles')
-        .update({ terms_accepted: true })
-        .eq('id', session.user.id);
-    }
+    localStorage.setItem('autocare-terms-accepted', 'true');
     setShowTermsModal(false);
     setSelectedBrandInModal(isAddingNew ? '' : (selectedVehicle?.brand || ''));
     setShowAddVehicleModal(true);
+  };
+
+  const acceptLocation = () => {
+    setIsLocationAccepted(true);
+    localStorage.setItem('autocare-location-accepted', 'true');
   };
 
   const confirmDeleteVehicle = async () => {
@@ -1980,9 +1981,14 @@ const App: React.FC = () => {
 
         {/* MODAL TERMOS E CONDIÇÕES JURÍDICOS */}
         <TermsModal
-          isOpen={showTermsModal}
+          isOpen={showTermsModal || (isLoggedIn && !isTermsAccepted)}
           onAccept={acceptTerms}
           onClose={() => setShowTermsModal(false)}
+        />
+
+        <LocationDisclosureModal
+          isOpen={isLoggedIn && isTermsAccepted && !isLocationAccepted}
+          onAccept={acceptLocation}
         />
 
         <AddVehicleModal
