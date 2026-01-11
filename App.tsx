@@ -1938,7 +1938,7 @@ const App: React.FC = () => {
         <NotificationCenterModal
           isOpen={showNotifications}
           onClose={() => setShowNotifications(false)}
-          notifications={notifications.filter(n => !reportedContent.includes(n.id) && !reportedContent.includes(n.data?.vehicleId))}
+          notifications={notifications.filter(n => n && !reportedContent.includes(n.id) && !reportedContent.includes(n.data?.vehicleId))}
           onAction={handleNotificationAction}
         />
 
@@ -2173,7 +2173,7 @@ const App: React.FC = () => {
                     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
                       <h5 className="text-[10px] font-black uppercase text-indigo-600 flex items-center gap-1"><MapPinned size={10} /> Avistamentos Recentes ({vehicle.sightings.length})</h5>
                       {vehicle.sightings
-                        .filter(s => !reportedContent.includes(s.id))
+                        .filter(s => s && !reportedContent.includes(s.id))
                         .slice(0, 5)
                         .map(s => (
                           <div key={s.id} className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl text-[10px] border border-slate-100 dark:border-slate-800">
