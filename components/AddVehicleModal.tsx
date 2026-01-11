@@ -38,11 +38,18 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
 
     const [selectedFipeBrand, setSelectedFipeBrand] = useState('');
     const [selectedFipeModel, setSelectedFipeModel] = useState('');
+    const [selectedFipeYear, setSelectedFipeYear] = useState('');
     const [selectedGenericModel, setSelectedGenericModel] = useState(isAddingNew ? '' : (selectedVehicle?.model || ''));
 
-    // Carregar Marcas ao abrir
+    // Carregar Marcas ao abrir e resetar estados
     useEffect(() => {
         if (isOpen) {
+            // Reset states before loading
+            setSelectedFipeBrand('');
+            setSelectedFipeModel('');
+            setSelectedFipeYear('');
+            setSelectedGenericModel(isAddingNew ? '' : (selectedVehicle?.model || ''));
+
             setIsLoadingBrands(true);
             getFipeBrands().then(data => {
                 // Filtrar apenas as marcas que temos em nossa lista de "mais conhecidas" em constants.tsx
@@ -66,7 +73,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 }
             });
         }
-    }, [isOpen]);
+    }, [isOpen, selectedVehicle, isAddingNew]);
 
     // Carregar Modelos (Versões no FIPE) quando a marca muda
     useEffect(() => {
@@ -93,6 +100,30 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
             setYears([]);
         }
     }, [selectedFipeModel, selectedFipeBrand]);
+
+    // Auto-select version/model when list is loaded (Editing mode)
+    useEffect(() => {
+        if (!isAddingNew && selectedVehicle && models.length > 0 && !selectedFipeModel) {
+            const found = models.find(m =>
+                m.nome.toLowerCase() === selectedVehicle.version?.toLowerCase() ||
+                m.nome.toLowerCase().includes(selectedVehicle.version?.toLowerCase())
+            );
+            if (found) {
+                setSelectedFipeModel(found.codigo);
+            }
+        }
+    }, [models, isAddingNew, selectedVehicle]);
+
+    // Auto-select year when list is loaded (Editing mode)
+    useEffect(() => {
+        if (!isAddingNew && selectedVehicle && years.length > 0 && !selectedFipeYear) {
+            const yearStr = selectedVehicle.year.toString();
+            const found = years.find(y => y.nome.startsWith(yearStr));
+            if (found) {
+                setSelectedFipeYear(found.nome.split(' ')[0]);
+            }
+        }
+    }, [years, isAddingNew, selectedVehicle]);
 
     // Helper to find generic models even if the brand name from FIPE is slightly different (e.g. "VW - VolksWagen")
     const getGenericModels = () => {
@@ -245,6 +276,8 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                                         <select
                                             required
                                             name="year"
+                                            value={selectedFipeYear}
+                                            onChange={(e) => setSelectedFipeYear(e.target.value)}
                                             disabled={isLoadingYears || !selectedFipeModel}
                                             className="w-full bg-slate-50 dark:bg-slate-800 rounded-2xl px-4 py-4 text-sm dark:text-white outline-none border border-slate-100 dark:border-slate-800 focus:border-indigo-500 appearance-none transition-all"
                                         >
