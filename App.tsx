@@ -2084,6 +2084,7 @@ const App: React.FC = () => {
 
                   <FuelConsumptionCard
                     averageConsumption={averageConsumption}
+                    fuelLogs={fuelLogs.filter(f => f.vehicleId === selectedVehicleId)}
                     onReset={handleResetFuel}
                     onRefuel={() => setShowFuelModal(true)}
                     userPlan={userPlan}

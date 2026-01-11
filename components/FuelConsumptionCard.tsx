@@ -1,9 +1,19 @@
 
-import React from 'react';
-import { Activity, Zap, PlusCircle, Crown, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { Activity, Zap, PlusCircle, Crown, ShieldCheck, History, Fuel, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface FuelLog {
+    id: string;
+    mileage: number;
+    liters: number;
+    cost: number;
+    date: string;
+    fuelType: string;
+}
 
 interface FuelConsumptionCardProps {
     averageConsumption: number | null;
+    fuelLogs: FuelLog[];
     onReset: () => void;
     onRefuel: () => void;
     userPlan: 'free' | 'premium';
@@ -15,6 +25,7 @@ interface FuelConsumptionCardProps {
 
 export const FuelConsumptionCard: React.FC<FuelConsumptionCardProps> = ({
     averageConsumption,
+    fuelLogs,
     onReset,
     onRefuel,
     userPlan,
@@ -23,6 +34,13 @@ export const FuelConsumptionCard: React.FC<FuelConsumptionCardProps> = ({
     isAiLoading,
     hasAdvice,
 }) => {
+    const [showHistory, setShowHistory] = useState(false);
+
+    // Sort logs by date descending and take last 3
+    const recentLogs = [...fuelLogs]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 3);
+
     return (
         <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-start justify-between mb-6">
@@ -67,6 +85,45 @@ export const FuelConsumptionCard: React.FC<FuelConsumptionCardProps> = ({
                     )}
                 </div>
             </div>
+
+            {/* Toggle History Button */}
+            {fuelLogs.length > 0 && (
+                <div className="mb-4">
+                    <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-white/5 rounded-2xl group transition-all active:scale-[0.98]"
+                    >
+                        <div className="flex items-center gap-2">
+                            <History size={14} className="text-indigo-600" />
+                            <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">Últimos Abastecimentos</span>
+                        </div>
+                        {showHistory ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                    </button>
+
+                    {/* Collapsible History Section */}
+                    {showHistory && (
+                        <div className="mt-2 space-y-1.5 animate-in slide-in-from-top-2 duration-200">
+                            {recentLogs.map((log) => (
+                                <div key={log.id} className="bg-white dark:bg-slate-800/50 rounded-xl p-3 flex items-center justify-between border border-slate-100 dark:border-slate-800 shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/20 rounded-lg flex items-center justify-center text-emerald-600">
+                                            <Fuel size={14} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] font-black dark:text-white leading-tight">{log.mileage} km</p>
+                                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight">{new Date(log.date).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[11px] font-black text-slate-700 dark:text-slate-300 leading-tight">{log.liters.toFixed(1)} L</p>
+                                        <p className="text-[8px] text-emerald-500 font-black uppercase tracking-tighter">{log.fuelType}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
                 <button
