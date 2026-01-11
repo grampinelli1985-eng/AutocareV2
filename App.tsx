@@ -1,4 +1,4 @@
-// Force deploy: 2026-01-11T10:25:00-03:00 - Versão Corrigida com Firebase
+// Force deploy: 2026-01-11T16:05:00-03:00 - Re-sincronizando com Vercel (Correção Firebase)
 import React, { useState, useEffect, useMemo } from 'react';
 import { PlusCircle, ChevronRight, Trash2, Car as CarIcon, PenTool, Eye, ShieldCheck, FileText, Lock, Loader2, Sparkles, AlertTriangle, Download, ShieldAlert, Trophy, MapPinned, MapPin, Navigation, Flag, Crown } from 'lucide-react';
 import Layout from './components/Layout';
