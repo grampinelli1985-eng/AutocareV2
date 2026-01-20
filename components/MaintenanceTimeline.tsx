@@ -20,12 +20,11 @@ const MaintenanceTimeline: React.FC<MaintenanceTimelineProps> = ({ milestones, o
         return (
           <div key={idx} className="relative flex items-start gap-6 group">
             {/* Indicador de Status na Linha */}
-            <div className={`absolute left-0 mt-1.5 w-10 h-10 rounded-full border-4 border-white dark:border-slate-950 flex items-center justify-center z-10 transition-all ${
-              isDone ? 'bg-green-500' : isOverdue ? 'bg-red-500' : isUpcoming ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'
-            }`}>
-              {isDone ? <CheckCircle2 size={20} className="text-white" /> : 
-               isOverdue ? <AlertCircle size={20} className="text-white" /> :
-               <Clock size={20} className="text-white" />}
+            <div className={`absolute left-0 mt-1.5 w-10 h-10 rounded-full border-4 border-white dark:border-slate-950 flex items-center justify-center z-10 transition-all ${isDone ? 'bg-green-500' : isOverdue ? 'bg-red-500' : isUpcoming ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'
+              }`}>
+              {isDone ? <CheckCircle2 size={20} className="text-white" /> :
+                isOverdue ? <AlertCircle size={20} className="text-white" /> :
+                  <Clock size={20} className="text-white" />}
             </div>
 
             <div className="ml-12 flex-1">
@@ -35,18 +34,17 @@ const MaintenanceTimeline: React.FC<MaintenanceTimelineProps> = ({ milestones, o
                     {milestone.km.toLocaleString()} KM
                   </h3>
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                      milestone.isWarranty ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                    }`}>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${milestone.isWarranty ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                      }`}>
                       {milestone.isWarranty ? 'Garantia' : 'Pós-Garantia'}
                     </span>
-                    {isDone && <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><History size={10}/> Realizado</span>}
+                    {isDone && <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><History size={10} /> Realizado</span>}
                   </div>
                 </div>
-                
+
                 <div className="flex gap-2">
                   {!isDone && (
-                    <button 
+                    <button
                       onClick={() => onViewDetail ? onViewDetail(milestone) : onCompleteTask(milestone.tasks[0], milestone.km)}
                       className="text-[10px] font-bold bg-indigo-600 text-white px-3 py-1.5 rounded-xl shadow-lg active:scale-95 transition-all hover:bg-indigo-700"
                     >
@@ -54,7 +52,7 @@ const MaintenanceTimeline: React.FC<MaintenanceTimelineProps> = ({ milestones, o
                     </button>
                   )}
                   {onViewDetail && (
-                    <button 
+                    <button
                       onClick={() => onViewDetail(milestone)}
                       className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 transition-all"
                       title="Ver detalhes"

@@ -6,12 +6,14 @@ interface PremiumSubscriptionModalProps {
     isOpen: boolean;
     onClose: () => void;
     onUpgrade: () => void;
+    onRestore: () => void;
 }
 
 export const PremiumSubscriptionModal: React.FC<PremiumSubscriptionModalProps> = ({
     isOpen,
     onClose,
     onUpgrade,
+    onRestore,
 }) => {
     if (!isOpen) return null;
 
@@ -55,6 +57,12 @@ export const PremiumSubscriptionModal: React.FC<PremiumSubscriptionModalProps> =
                         className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black active:scale-95 shadow-xl flex items-center justify-center gap-2 uppercase text-xs tracking-widest"
                     >
                         Assinar Agora
+                    </button>
+                    <button
+                        onClick={onRestore}
+                        className="w-full py-2 text-indigo-400 font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:underline"
+                    >
+                        Restaurar Compras
                     </button>
                     <button
                         onClick={onClose}

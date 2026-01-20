@@ -227,3 +227,4 @@ export const analyzeInvoice = async (base64Image: string, mimeType: string = "im
     throw error;
   }
 };
+

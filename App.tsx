@@ -1085,6 +1085,35 @@ const App: React.FC = () => {
     }
   };
 
+  const handleRestorePurchases = async () => {
+    const platform = Capacitor.getPlatform();
+    if (platform !== 'android') {
+      alert("A restauração de compras está disponível apenas no aplicativo Android.");
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    try {
+      const { customerInfo } = await Purchases.restorePurchases();
+      const entitlementId = import.meta.env.VITE_REVENUECAT_ENTITLEMENT_ID || 'Premium';
+
+      if (customerInfo.entitlements.active[entitlementId] !== undefined) {
+        if (session?.user) {
+          await supabase.from('profiles').update({ plan: 'premium', subscription_status: 'active' }).eq('id', session.user.id);
+          await checkSubscriptionStatus();
+          alert("Assinatura restaurada com sucesso!");
+        }
+      } else {
+        alert("Nenhuma assinatura ativa encontrada para restaurar.");
+      }
+    } catch (e: any) {
+      console.error("Restore Error:", e);
+      alert("Erro ao restaurar compras: " + (e.message || "Tente novamente mais tarde."));
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
   const handleOpenReport = () => {
     if (userPlan !== 'premium') {
       setShowSubscriptionModal(true);
