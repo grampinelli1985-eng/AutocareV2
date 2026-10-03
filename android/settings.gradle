@@ -1,3 +1,8 @@
+plugins {
+    // Baixa automaticamente o JDK 21 exigido pelos plugins Capacitor (o Android Studio atual traz o Java 25)
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
