@@ -53,8 +53,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     setError(null);
     setSuccess(null);
 
+    // No app, window.location.origin é "https://localhost" (não abre nada fora do WebView);
+    // usamos o deep link registrado no AndroidManifest para voltar ao app.
+    const isNative = Capacitor.isNativePlatform();
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '?reset=true',
+      redirectTo: isNative ? 'com.autocareia://reset-password' : window.location.origin,
     });
 
     if (resetError) {
@@ -101,7 +104,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-indigo-600 via-violet-700 to-fuchsia-700 flex flex-col items-center justify-end p-6 overflow-hidden relative">
+    <div
+      className="h-screen w-full bg-gradient-to-br from-indigo-600 via-violet-700 to-fuchsia-700 flex flex-col items-center justify-end p-6 overflow-hidden relative"
+      style={{
+        height: '100dvh',
+        paddingTop: 'calc(1.5rem + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))',
+        paddingBottom: 'calc(1.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))'
+      }}
+    >
       <div className="absolute top-[-10%] left-[-20%] w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-[20%] right-[-10%] w-60 h-60 bg-fuchsia-500/20 rounded-full blur-3xl" />
 
@@ -272,7 +282,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               Política de Privacidade
             </a>
             <span className="w-1 h-1 bg-white/20 rounded-full" />
-            <span className="text-[9px] text-slate-400 font-bold uppercase">Versão 2.0.0</span>
+            <span className="text-[9px] text-slate-400 font-bold uppercase">Versão 2.0.1</span>
           </div>
         </div>
       </div>

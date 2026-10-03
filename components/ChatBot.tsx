@@ -66,7 +66,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, q
         } sm:rounded-[32px] border border-slate-200 dark:border-slate-800 overflow-hidden`}>
 
         {/* Header */}
-        <div className="bg-indigo-600 dark:bg-indigo-700 p-5 text-white flex justify-between items-center shrink-0">
+        <div className="bg-indigo-600 dark:bg-indigo-700 p-5 text-white flex justify-between items-center shrink-0" style={{ paddingTop: 'calc(1.25rem + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))' }}>
           <div className="flex items-center gap-3">
             <div className="bg-white/20 p-2 rounded-xl">
               <Bot size={24} />
@@ -76,7 +76,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, q
                 <h3 className="font-black text-sm uppercase tracking-tight">Manual Inteligente</h3>
                 {userPlan === 'premium' && <Crown size={12} className="text-amber-400 fill-amber-400" />}
               </div>
-              <p className="text-[10px] text-indigo-100 font-medium leading-none">Especialista AutoCare IA • Pro 1.5</p>
+              <p className="text-[10px] text-indigo-100 font-medium leading-none">Especialista AutoCare IA</p>
             </div>
           </div>
           <button
@@ -140,7 +140,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, q
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSendMessage} className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0">
+        <form onSubmit={handleSendMessage} className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0" style={{ paddingBottom: 'calc(1rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}>
           <div className="relative">
             <input
               type="text"
@@ -176,7 +176,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ vehicle, isOpen, onClose, userPlan, q
             )}
 
             <p className="text-[8px] text-center text-slate-400 font-medium leading-tight px-4 mt-1">
-              Alimentado por Gemini 1.5 Pro. IA pode conter erros.
+              Alimentado por Google Gemini. IA pode conter erros.
             </p>
           </div>
         </form>

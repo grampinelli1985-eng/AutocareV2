@@ -73,7 +73,7 @@ export const MaintenanceReportModal: React.FC<MaintenanceReportModalProps> = ({
                             <div className="pt-1 pb-2">
                                 <p className="text-xl font-black text-slate-800 leading-normal uppercase tracking-tight">{vehicle.brand} {vehicle.model}</p>
                                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-1 leading-relaxed">
-                                    {vehicle.year} • {vehicle.engine} • PLACA <span className="font-mono text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{vehicle.plate}</span>
+                                    {vehicle.year} • {vehicle.engine} • PLACA <span className="font-mono text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{vehicle.plate || '---'}</span>
                                 </p>
                             </div>
                         </div>
@@ -165,7 +165,7 @@ export const MaintenanceReportModal: React.FC<MaintenanceReportModalProps> = ({
                             <div className="text-right">
                                 <p className="text-[11px] font-black uppercase text-slate-900 tracking-widest">ID de Autenticação</p>
                                 <p className="text-[10px] font-mono text-slate-300 uppercase tracking-[0.15em] mt-2">
-                                    {vehicle.plate.replace('-', '')}-{Math.floor(Date.now() / 1000)}
+                                    {(vehicle.plate || 'SEMPLACA').replace('-', '')}-{Math.floor(Date.now() / 1000)}
                                 </p>
                             </div>
                         </div>

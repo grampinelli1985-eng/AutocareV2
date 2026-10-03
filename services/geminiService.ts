@@ -4,6 +4,10 @@ import { Vehicle, ChatMessage, FuelLog, ServiceRecord } from "../types";
 
 const genAI = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
 
+// gemini-2.0-flash foi desligado pelo Google em 01/06/2026. O modelo pode ser trocado
+// sem alterar código via VITE_GEMINI_MODEL (ver ai.google.dev/gemini-api/docs/deprecations).
+const GEMINI_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-3.6-flash';
+
 export async function getSmartMaintenanceAdvice(vehicle: Vehicle, records: ServiceRecord[] = [], limit: number = 3) {
   try {
     const prompt = `
@@ -41,7 +45,7 @@ export async function getSmartMaintenanceAdvice(vehicle: Vehicle, records: Servi
     `;
 
     const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
     });
 
@@ -81,7 +85,7 @@ export async function chatWithGemini(messages: ChatMessage[], vehicle: Vehicle |
     const systemInstruction = `
       Você é o Assistente Especialista da AutoCare, um especialista em manutenção automotiva brasileira.
       Seu objetivo é ajudar proprietários de veículos a cuidarem melhor de seus carros, especialmente após o período de garantia.
-      ${vehicle ? `O usuário está falando sobre um ${vehicle.brand} ${vehicle.model} ${vehicle.year} con ${vehicle.currentMileage} KM.` : 'O usuário ainda não selecionou um veículo.'}
+      ${vehicle ? `O usuário está falando sobre um ${vehicle.brand} ${vehicle.model} ${vehicle.year} com ${vehicle.currentMileage} KM.` : 'O usuário ainda não selecionou um veículo.'}
       
       Regras de resposta:
       1. Seja técnico, mas use linguagem acessível.
@@ -105,13 +109,13 @@ export async function chatWithGemini(messages: ChatMessage[], vehicle: Vehicle |
     }));
 
     const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: GEMINI_MODEL,
       contents: [
-        { role: 'user', parts: [{ text: `INSTRUÇÃO DE SISTEMA: ${systemInstruction}` }] },
         ...history.map(h => ({ role: h.role, parts: h.parts })),
         { role: 'user', parts: [{ text: lastMessage }] }
       ],
       config: {
+        systemInstruction,
         temperature: 0.7,
         topP: 0.9,
       }
@@ -127,7 +131,7 @@ export async function chatWithGemini(messages: ChatMessage[], vehicle: Vehicle |
     }
     console.groupEnd();
 
-    return "Ocorreu um erro na conexão com meu cérebro mecânico. Pode tentar novamente? Dica: Verifique se sua chave API está correta no console do navegador.";
+    return "Ocorreu um erro na conexão com meu cérebro mecânico. Pode tentar novamente? Verifique sua conexão com a internet.";
   }
 }
 
@@ -162,7 +166,7 @@ export async function getFuelEconomyAdvice(vehicle: Vehicle, averageKmL: string 
     `;
 
     const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
     });
 
@@ -190,7 +194,7 @@ export const analyzeInvoice = async (base64Image: string, mimeType: string = "im
     DIRETRIZ IMPORTANTE: Retorne APENAS o objeto JSON puro, sem blocos de código markdown ou texto explicativo.`;
 
     const result = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: GEMINI_MODEL,
       contents: [
         {
           role: "user",

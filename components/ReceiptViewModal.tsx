@@ -43,7 +43,11 @@ export const ReceiptViewModal: React.FC<ReceiptViewModalProps> = ({
                         alt="Comprovante de Serviço"
                         className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
                         onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x600?text=Erro+ao+carregar+imagem';
+                            // via.placeholder.com foi desativado; evita loop de onError e mostra o texto alternativo
+                            const img = e.target as HTMLImageElement;
+                            img.onerror = null;
+                            img.removeAttribute('src');
+                            img.alt = 'Não foi possível carregar a imagem do comprovante.';
                         }}
                     />
                 </div>

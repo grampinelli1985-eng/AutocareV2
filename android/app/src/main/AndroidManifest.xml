@@ -47,5 +47,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-feature android:name="android.hardware.location.gps" />
+    <!-- Android 13+: sem esta permissão o pedido de notificação nunca aparece e o push não funciona -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- required=false: sem isso a Play Store esconde o app de aparelhos/tablets sem GPS -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>

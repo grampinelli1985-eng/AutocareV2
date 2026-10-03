@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Base CSS for AutoCare */
 :root {
   --primary: #4f46e5;

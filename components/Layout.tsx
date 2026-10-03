@@ -35,7 +35,7 @@ const Layout: React.FC<LayoutProps> = ({
       {/* Header */}
       <header
         className="bg-indigo-600 dark:bg-indigo-700 text-white px-6 py-4 flex justify-between items-center shrink-0 shadow-lg z-20"
-        style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
+        style={{ paddingTop: 'calc(1rem + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))' }}
       >
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-bold tracking-tight">AutoCare IA</h1>
@@ -65,7 +65,7 @@ const Layout: React.FC<LayoutProps> = ({
       {/* Bottom Navigation */}
       <nav
         className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-3 flex justify-between items-center z-50"
-        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+        style={{ paddingBottom: 'calc(0.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;

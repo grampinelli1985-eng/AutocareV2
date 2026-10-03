@@ -1,4 +1,3 @@
-// Force deploy: 2026-01-11T16:05:00-03:00 - Re-sincronizando com Vercel (Correção Firebase)
 import React, { useState, useEffect, useMemo } from 'react';
 import { PlusCircle, ChevronRight, Trash2, Car as CarIcon, PenTool, Eye, ShieldCheck, FileText, Lock, Loader2, Sparkles, AlertTriangle, Download, ShieldAlert, Trophy, MapPinned, MapPin, Navigation, Flag, Crown } from 'lucide-react';
 import Layout from './components/Layout';
@@ -46,6 +45,9 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { PasswordResetModal } from './components/PasswordResetModal';
 import { formatPlate, calculateDistance } from './src/utils/helpers';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -65,6 +67,16 @@ const BRAZILIAN_STATES = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
   'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
+
+const parseNotificationData = (raw: any): any => {
+  if (!raw) return {};
+  if (typeof raw !== 'string') return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+};
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -155,8 +167,11 @@ const App: React.FC = () => {
   const [showSightingAlert, setShowSightingAlert] = useState(false);
   const [activeSightingData, setActiveSightingData] = useState<{ vehicle: Vehicle, data: any } | null>(null);
   const [sightingSuccessData, setSightingSuccessData] = useState({ vehicleName: '', location: '' });
-  const [newSightingAlert, setNewSightingAlert] = useState<{ vehicle: Vehicle, mapUrl: string } | null>(null);
   const [showKmReminderModal, setShowKmReminderModal] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+
+  // Estável entre renovações de token (o objeto session muda a cada refresh, ~1h)
+  const userId = session?.user?.id ?? null;
 
   const selectedVehicle = useMemo(() =>
     vehicles.find(v => v.id === selectedVehicleId) || null
@@ -308,9 +323,10 @@ const App: React.FC = () => {
 
       const {
         data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
+      } = supabase.auth.onAuthStateChange((event, session) => {
         setSession(session);
         setIsLoggedIn(!!session);
+        if (event === 'PASSWORD_RECOVERY') setShowPasswordReset(true);
       });
 
       return () => subscription.unsubscribe();
@@ -321,7 +337,7 @@ const App: React.FC = () => {
     const initPurchases = async () => {
       if (Capacitor.getPlatform() === 'android') {
         try {
-          await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
+          await Purchases.setLogLevel({ level: import.meta.env.DEV ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN });
           const apiKey = import.meta.env.VITE_REVENUECAT_ANDROID_API_KEY;
           if (apiKey) {
             await Purchases.configure({ apiKey });
@@ -338,46 +354,63 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Handle Deep Links (for OAuth)
-    const handleDeepLink = async () => {
-      CapApp.addListener('appUrlOpen', async (data: any) => {
-        const url = new URL(data.url);
-        // Supabase OAuth returns data in the hash/fragment after #
-        const hash = url.hash;
-        if (hash && (hash.includes('access_token=') || hash.includes('type=recovery'))) {
-          // Extrair parâmetros do hash manually if setSession isn't enough, 
-          // but Supabase usually handles setSession with access_token and refresh_token
-          const params: any = {};
-          hash.substring(1).split('&').forEach(p => {
-            const parts = p.split('=');
-            params[parts[0]] = parts[1];
-          });
+    // Deep links: retorno do login com Google e do e-mail de recuperação de senha
+    const platform = Capacitor.getPlatform();
+    if (platform !== 'android' && platform !== 'ios') return;
 
-          if (params.access_token && params.refresh_token) {
-            const { error } = await supabase.auth.setSession({
-              access_token: params.access_token,
-              refresh_token: params.refresh_token
-            });
-            if (!error) {
-              // Redireciona para dashboard se necessário ou fecha modais
-              window.location.hash = ''; // Clear hash
-            }
+    const listener = CapApp.addListener('appUrlOpen', async ({ url }) => {
+      try {
+        const parsed = new URL(url);
+        const params = new URLSearchParams(parsed.hash.startsWith('#') ? parsed.hash.substring(1) : parsed.search);
+
+        const errorDescription = params.get('error_description');
+        if (errorDescription) {
+          alert('Falha na autenticação: ' + errorDescription);
+          return;
+        }
+
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          if (error) {
+            alert('Não foi possível concluir o login: ' + error.message);
+          } else if (params.get('type') === 'recovery') {
+            setShowPasswordReset(true);
           }
         }
-      });
-    };
+      } catch (err) {
+        console.error('Deep link inválido:', err);
+      }
+    });
 
-    const platform = Capacitor.getPlatform();
-    if (platform === 'android' || platform === 'ios') {
-      handleDeepLink();
-    }
+    return () => {
+      listener.then(l => l.remove());
+    };
   }, []);
 
   useEffect(() => {
+    // Botão "voltar" do Android: sem este listener o app fecha em qualquer tela
+    if (Capacitor.getPlatform() !== 'android') return;
+    const listener = CapApp.addListener('backButton', () => {
+      if (activeTab !== 'dashboard') {
+        setActiveTab('dashboard');
+      } else {
+        CapApp.minimizeApp();
+      }
+    });
+    return () => {
+      listener.then(l => l.remove());
+    };
+  }, [activeTab]);
+
+  useEffect(() => {
     const fetchData = async () => {
-      if (!isLoggedIn || !session?.user) return;
+      if (!isLoggedIn || !userId) return;
       setIsLoading(true);
-      const userId = session.user.id;
 
       try {
         // Fetch Profile
@@ -517,8 +550,8 @@ const App: React.FC = () => {
             ...n,
             isRead: n.is_read,
             date: n.created_at,
-            data: typeof n.data === 'string' ? JSON.parse(n.data) : n.data,
-            mapUrl: n.map_url || (typeof n.data === 'string' ? JSON.parse(n.data).mapUrl : n.data?.mapUrl)
+            data: parseNotificationData(n.data),
+            mapUrl: n.map_url || parseNotificationData(n.data).mapUrl
           }));
           setNotifications(mapped);
 
@@ -549,15 +582,15 @@ const App: React.FC = () => {
       }
     };
 
-    if (!isLoggedIn || !session?.user) {
+    if (!isLoggedIn || !userId) {
       setIsLoading(false);
     } else {
       fetchData();
     }
-  }, [isLoggedIn, session]);
+  }, [isLoggedIn, userId]);
 
   useEffect(() => {
-    if (isLoggedIn && session?.user && isLocationAccepted) {
+    if (isLoggedIn && userId && isLocationAccepted) {
       const syncLocation = async () => {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(async (pos) => {
@@ -565,64 +598,71 @@ const App: React.FC = () => {
             await supabase.from('profiles').update({
               last_known_lat: latitude,
               last_known_lng: longitude
-            }).eq('id', session.user.id);
-          }, null, { enableHighAccuracy: false, timeout: 10000 });
+            }).eq('id', userId);
+          }, (err) => console.warn('Localização indisponível:', err?.message), { enableHighAccuracy: false, timeout: 10000 });
         }
       };
       syncLocation();
       // REMOVED BACKGROUND INTERVAL TO COMPLY WITH PLAY STORE POLICIES
     }
-  }, [isLoggedIn, session, isLocationAccepted]);
+  }, [isLoggedIn, userId, isLocationAccepted]);
 
   useEffect(() => {
     const platform = Capacitor.getPlatform();
-    if (isLoggedIn && session?.user && (platform === 'android' || platform === 'ios')) {
-      const setupPush = async () => {
-        try {
-          let perm = await PushNotifications.checkPermissions();
-          if (perm.receive === 'prompt') {
-            perm = await PushNotifications.requestPermissions();
-          }
+    if (!isLoggedIn || !userId || (platform !== 'android' && platform !== 'ios')) return;
 
-          PushNotifications.addListener('registrationError', (error: any) => {
-            console.error('Push registration error (handled):', error);
+    let cancelled = false;
+    const setupPush = async () => {
+      try {
+        // Listeners registrados antes de register() para não perder o token
+        await PushNotifications.addListener('registrationError', (error: any) => {
+          console.error('Push registration error (handled):', error);
+        });
+
+        await PushNotifications.addListener('registration', async ({ value: token }) => {
+          await supabase.from('profiles').update({ push_token: token }).eq('id', userId);
+        });
+
+        await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          addNotification({
+            type: 'info',
+            title: notification.title || 'Nova Notificação',
+            message: notification.body || ''
           });
+        });
 
-          PushNotifications.addListener('registration', async ({ value: token }) => {
-            console.log('Push registration success:', token);
-            await supabase.from('profiles').update({ push_token: token }).eq('id', session.user.id);
-          });
-
-          PushNotifications.addListener('pushNotificationReceived', (notification) => {
-            addNotification({
-              type: 'info',
-              title: notification.title || 'Nova Notificação',
-              message: notification.body || ''
-            });
-          });
-
-          if (perm.receive === 'granted') {
-            await PushNotifications.register();
-          }
-        } catch (e) {
-          console.error('Push Notifications setup error (handled):', e);
+        // Android 13+: requer a permissão POST_NOTIFICATIONS declarada no manifest
+        let perm = await PushNotifications.checkPermissions();
+        if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+          perm = await PushNotifications.requestPermissions();
         }
-      };
-      setupPush().catch(err => console.error('setupPush unhandled error:', err));
-    }
-  }, [isLoggedIn, session]);
+
+        if (!cancelled && perm.receive === 'granted') {
+          await PushNotifications.register();
+        }
+      } catch (e) {
+        console.error('Push Notifications setup error (handled):', e);
+      }
+    };
+    setupPush();
+
+    return () => {
+      cancelled = true;
+      PushNotifications.removeAllListeners().catch(() => { });
+    };
+  }, [isLoggedIn, userId]);
 
   // Realtime Notifications Listener
   useEffect(() => {
-    if (!isLoggedIn || !session?.user) return;
+    if (!isLoggedIn || !userId) return;
 
     const channel = supabase
-      .channel(`notifications-${session.user.id}`)
+      .channel(`notifications-${userId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'notifications',
-        filter: `user_id=eq.${session.user.id}`
+        filter: `user_id=eq.${userId}`
       }, async (payload) => { // Added async here
         const newNotif: NotificationItem = {
           ...payload.new,
@@ -632,8 +672,8 @@ const App: React.FC = () => {
           message: payload.new.message,
           date: payload.new.created_at,
           isRead: payload.new.is_read,
-          data: typeof payload.new.data === 'string' ? JSON.parse(payload.new.data) : payload.new.data,
-          mapUrl: payload.new.data?.mapUrl || (typeof payload.new.data === 'string' ? JSON.parse(payload.new.data).mapUrl : undefined)
+          data: parseNotificationData(payload.new.data),
+          mapUrl: parseNotificationData(payload.new.data).mapUrl
         };
 
         // Se for roubo e não tiver a placa, tenta buscar na hora
@@ -712,7 +752,7 @@ const App: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isLoggedIn, session, vehicles]);
+  }, [isLoggedIn, userId, vehicles]);
 
   useEffect(() => {
     if (selectedVehicle && isLoggedIn) {
@@ -756,7 +796,6 @@ const App: React.FC = () => {
           ...prev,
           [selectedVehicle.id]: { mileage: selectedVehicle.currentMileage, advice: data }
         }));
-        setIsFuelAiLoading(true); // Keep loading state if we want to show it? Or set to false
         setIsFuelAiLoading(false);
       });
     }
@@ -917,10 +956,16 @@ const App: React.FC = () => {
     // Clear user data on logout
     setVehicles([]);
     setRecords([]);
+    setFuelLogs([]);
     setSelectedVehicleId(null);
     setAiAnalysis(null);
+    setAiFuelAdvice(null);
     setRadarCache({});
+    setFuelAdviceCache({});
+    setFipeData(null);
+    setUserPlan('free');
     setNotifications([]);
+    setActiveTab('dashboard');
     localStorage.removeItem('autocare-auth');
   };
 
@@ -929,30 +974,20 @@ const App: React.FC = () => {
     setIsDeletingAccount(true);
 
     try {
-      // 1. Delete vehicles (cascades or manual delete for safety)
-      const { error: vError } = await supabase
-        .from('vehicles')
-        .delete()
-        .eq('owner_id', session.user.id);
+      // Remove o usuário de auth.users e, em cascata, todos os dados dele
+      // (função criada em supabase/migrations/20261003_review_fixes.sql).
+      // A política do Google Play exige que a CONTA seja excluída, não apenas os dados.
+      const { error } = await supabase.rpc('delete_own_account');
+      if (error) throw error;
 
-      if (vError) throw vError;
-
-      // 2. Delete profile
-      const { error: pError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', session.user.id);
-
-      if (pError) throw pError;
-
-      // 3. Clear local states
       setVehicles([]);
       setRecords([]);
+      setFuelLogs([]);
       setNotifications([]);
 
-      // 3. Sign out
+      // A sessão já não existe no servidor; limpa apenas o armazenamento local
       if (supabase.auth) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => { });
       }
 
       // 4. Reset auth state
@@ -1197,10 +1232,26 @@ const App: React.FC = () => {
       }
 
       reportContainer.setAttribute('style', originalStyle);
-      pdf.save(`AutoCare_Relatorio_${selectedVehicle?.plate || 'Manutencao'}.pdf`);
+      const fileName = `AutoCare_Relatorio_${(selectedVehicle?.plate || 'Manutencao').replace(/[^A-Za-z0-9_-]/g, '')}.pdf`;
+
+      if (Capacitor.isNativePlatform()) {
+        // O WebView do Android ignora downloads (pdf.save não faz nada no app).
+        // Salvamos no cache do app e abrimos a planilha de compartilhamento do sistema.
+        const base64 = pdf.output('datauristring').split(',')[1];
+        const { uri } = await Filesystem.writeFile({
+          path: fileName,
+          data: base64,
+          directory: Directory.Cache
+        });
+        await Share.share({ title: 'Relatório de Manutenção', files: [uri] });
+      } else {
+        pdf.save(fileName);
+      }
     } catch (error: any) {
+      // Usuário fechou a tela de compartilhamento: não é erro
+      if (/cancel/i.test(error?.message || '')) return;
       console.error('Falha ao gerar PDF:', error);
-      alert(`⚠️ Erro ao gerar o arquivo: ${error.message || 'Erro desconhecido'}. \n\nDica: Verifique se você tem permissão de armazenamento e se todas as imagens carregaram.`);
+      alert(`⚠️ Erro ao gerar o arquivo: ${error.message || 'Erro desconhecido'}. \n\nDica: Verifique sua conexão e se todas as imagens carregaram.`);
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -2001,6 +2052,7 @@ const App: React.FC = () => {
           isOpen={showSubscriptionModal}
           onClose={() => setShowSubscriptionModal(false)}
           onUpgrade={handleUpgradeToPremiumTrigger}
+          onRestore={handleRestorePurchases}
         />
 
         {showLevelModal && (
@@ -2112,7 +2164,7 @@ const App: React.FC = () => {
                   />
 
                   <FuelConsumptionCard
-                    averageConsumption={averageConsumption}
+                    averageConsumption={averageConsumption ? parseFloat(averageConsumption) : null}
                     fuelLogs={fuelLogs.filter(f => f.vehicleId === selectedVehicleId)}
                     onReset={handleResetFuel}
                     onRefuel={() => setShowFuelModal(true)}
@@ -2185,7 +2237,7 @@ const App: React.FC = () => {
                 <div className="space-y-1">
                   <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest leading-none">Divulgação de Localização</p>
                   <p className="text-[9px] text-amber-700/80 dark:text-amber-500/80 leading-snug font-medium">
-                    Este aplicativo utiliza dados de localização em segundo plano para permitir o recebimento de alertas de furtos próximos a você ({userPlan === 'free' ? 'raio de 100km' : 'Alcance Nacional'}). Sua localização é processada de forma anônima e não é compartilhada com terceiros para fins publicitários.
+                    Este aplicativo utiliza sua localização apenas enquanto está em uso para permitir o recebimento de alertas de furtos próximos a você ({userPlan === 'free' ? 'raio de 100km' : 'Alcance Nacional'}). Sua localização é processada de forma anônima e não é compartilhada com terceiros para fins publicitários.
                   </p>
                 </div>
               </div>
@@ -2447,11 +2499,6 @@ const App: React.FC = () => {
           onConfirm={confirmDeleteVehicle}
         />
 
-        <SightingSuccessModal
-          sighting={newSightingAlert}
-          onClose={() => setNewSightingAlert(null)}
-        />
-
         <TheftReportModal
           isOpen={!!reportingTheftVehicleId}
           userPlan={userPlan}
@@ -2532,6 +2579,11 @@ const App: React.FC = () => {
             setShowReceiptModal(false);
             setSelectedReceiptUrl(null);
           }}
+        />
+
+        <PasswordResetModal
+          isOpen={showPasswordReset}
+          onClose={() => setShowPasswordReset(false)}
         />
 
         <KmReminderModal
